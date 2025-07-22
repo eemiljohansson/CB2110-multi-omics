@@ -176,16 +176,46 @@ library(psych) # Version 2.3.6.26
 library(ggpubr) # Version 0.6.0
 ```
 
-## Information about Chronic Lymphocytic Leukemia
+## Information about breast cancer
 
 ![Hematopoetic cell lineage](https://nci-media.cancer.gov/pdq/media/images/526538.jpg)
 Chronic lymphocytic leukemia (CLL) is a type of cancer that starts in the lymphocytes in the bone marrow. It tends to progress slowly over many years and mainly affects older adults and almost never children. In CLL, the bone marrow produces too many white blood cells which are not fully developed and therefore do not function properly. Typically, there are no early symptoms but over time this causes problems such as increased infection risk, swollen lymph nodes and unusual bleeding or bruising. CLLs account for about 25% of all leukemia cases and 38% in adults older than 19 years.
 Feel free check out more about the CLL proteome at [the Human Disease Blood Atlas](https://www.proteinatlas.org/humanproteome/disease/chronic+lymphocytic+leukemia).
 
 ```{r}
+# Load the data. The data was obtain from a TCGA study on breast cancer investigating miRNA, mRNA, and proteins.
+miRNA <- read_csv("../data/miRNA.csv")
+mRNA <- read_csv("../data/mRNA.csv")
+protein <- read_csv("../data/protein.csv")
+```
+
+```{r}
+# Let's check the dimensions of the data
+tcga_data <- list(miRNA = miRNA, 
+             mRNA = mRNA, 
+             protein = protein)
+
+lapply(tcga_data,dim)
+```
+```{r}
+# Let's have a look at the dataframes
+print(tcga_data$miRNA)
+print(tcga_data$mRNA)
+print(tcga_data$protein)
+```
+
+```{r}
 utils::data("CLL_data")
 lapply(CLL_data,dim)
 ```
+
+```{r}
+CLL_data$Drugs |> as.data.frame()
+CLL_data$Mutations |> as.data.frame()
+CLL_data$mRNA |> as.data.frame()
+CLL_data$Methylation |> as.data.frame()
+```
+
 
 Sample metadata are stored as a data.frame. Important columns are:
 
