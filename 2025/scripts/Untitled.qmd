@@ -10,7 +10,8 @@ library(tidyverse)
 library(readxl)
 library(ggridges)
 library(MOFA2)
-library(mofapy2)
+library(reticulate)
+library(patchwork)
 ```
 
 ```{r}
@@ -122,6 +123,9 @@ covid_metadata |>
   ggplot(aes(x = Count, y = COVID_status, fill = Sex)) +
   geom_bar(stat = "identity", position = "dodge") +
   theme_minimal()
+
+ggsave("../plots/pdf/metadata_sex_covid_status.pdf", width = 8, height = 6)
+ggsave("../plots/png/metadata_sex_covid_status.png", width = 8, height = 6)
 
 # Check the distribution of Age
 covid_metadata |>
@@ -342,104 +346,248 @@ MOFAobject
 
 Train the MOFA model. Remember that in this step the MOFA2 R package connets with the mofapy2 Python package using reticulate. This is the source of most problems when running MOFA. See our FAQ section if you have issues. The output is saved in the file specified as outfile. If none is specified, the output is saved in a temporary location.
 
-conda install -c conda-forge h5py numpy scipy pandas scikit-learn dtw-python mofapy2
-
 ```{r}
-
+#outfile = file.path(tempdir(),"model.hdf5")
+#MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk=TRUE)
 ```
 
 
 ```{r}
-# Path to Basilisk’s venv:
-venv <- file.path(
-  Sys.getenv("HOME"),
-  "Library/Caches/org.R-project.R/R/basilisk/1.21.5/MOFA2/1.19.0/mofa_env"
+Sys.setenv(HDF5_DIR = system("brew --prefix hdf5", intern = TRUE))
+```
+
+If it doesn't work with use_basilisk = TRUE, try with use_basilisk = FALSE. This will use the conda environment you have set up with reticulate.
+Then run this script in your terminal:
+
+conda create -n mofa2 python=3.10 \
+  numpy=1.23.1 scipy=1.8.1 pandas=1.4.3 \
+  scikit-learn=1.1.1 dtw-python=1.2.2 h5py=3.6.0 -c conda-forge
+
+conda activate mofa2
+pip install mofapy2==0.7.0
+
+```{r}
+library(reticulate)
+
+# Activate your working mofa2 conda environment
+use_condaenv("mofa2", required = TRUE)
+
+# Ensure MOFA2 sees your correct Python:
+reticulate::py_config()
+
+# Now run MOFA without Basilisk
+outfile <- "../data/covid/covid_model.hdf5"
+MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk=FALSE)
+```
+
+```{r}
+MOFAobject.trained
+```
+
+Now if you wish to save the model, you can do so with the following command:
+
+```{r}
+print(filepath)
+```
+
+```{r}
+slotNames(MOFAobject.trained)
+```
+
+```{r}
+names(MOFAobject.trained@data)
+```
+
+```{r}
+dim(MOFAobject.trained@data$somalogic$group1)
+dim(MOFAobject.trained@data$cytokine$group1)
+```
+
+```{r}
+names(MOFAobject.trained@expectations)
+```
+
+Check the dimensionality of the factor matrix. How many factors do we have? How many samples do we have?
+
+```{r}
+dim(MOFAobject.trained@expectations$Z$group1)
+```
+
+Dimensionality of the matrices
+
+```{r}
+dim(MOFAobject.trained@expectations$W$somalogic)
+dim(MOFAobject.trained@expectations$W$cytokine)
+```
+
+```{r}
+# Add sample metadata to the model
+samples_metadata(MOFAobject.trained) <- covid_metadata |> rename(sample = RecordID) |>
+  filter(sample %in% samples_names(MOFAobject.trained)$group1) |> as.data.frame()
+```
+
+```{r}
+plot_factor_cor(MOFAobject.trained)
+```
+
+```{r}
+# Total variance explained per view and group
+head(MOFAobject.trained@cache$variance_explained$r2_total[[1]]) # group 1
+```
+
+```{r}
+# Variance explained for every factor in per view and group
+head(MOFAobject.trained@cache$variance_explained$r2_per_factor[[1]]) # group 1
+```
+
+```{r}
+plot_variance_explained(MOFAobject.trained, x="view", y="factor")
+```
+
+```{r}
+plot_variance_explained(MOFAobject.trained, x="group", y="factor", plot_total = T)[[2]]
+```
+
+```{r}
+plot_factor(MOFAobject.trained, 
+  factor = 1:10,
+  color_by = "Age",
+  shape_by = "COVID_status"
+)
+```
+
+```{r}
+p <- plot_factor(MOFAobject.trained, 
+  factors = 1:10,
+  color_by = "COVID_status",
+  dot_size = 3,        # change dot size
+  dodge = T,           # dodge points with different colors
+  legend = F,          # remove legend
+  add_violin = T,      # add violin plots,
+  violin_alpha = 0.25  # transparency of violin plots
 )
 
-# 1.1 – install HDF5 via Homebrew if you haven’t already
-# (run this in your terminal, not in R)
-#   brew update
-#   brew install hdf5
+# The output of plot_factor is a ggplot2 object that we can edit
+p <- p + 
+  scale_color_manual(values=c("Positive"="black", "Negative"="red")) +
+  scale_fill_manual(values=c("Positive"="black", "Negative"="red"))
 
-# 1.2 – use reticulate to pip‐install the HDF5 dev headers into the venv
-py_bin <- file.path(venv, "bin", "python")
-system2(py_bin, args = c("-m", "pip", "install",
-                        sprintf("--global-option=build_ext"),
-                        sprintf("--global-option=-I%s/include", Sys.getenv("HOMEBREW_PREFIX", "/opt/homebrew")),
-                        sprintf("--global-option=-L%s/lib",  Sys.getenv("HOMEBREW_PREFIX", "/opt/homebrew")),
-                        "h5py"))
-
-# This forces h5py to compile *after* seeing your Homebrew HDF5 install.
-
-# Now that h5py is in place, run your MOFA fit again
-MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk = TRUE)
-```
-
-
-```{r}
-library(reticulate)
-use_condaenv("mofa2", required = TRUE)
-
-# Now Basilisk will see the fully-resolved Conda env
-outfile = file.path(tempdir(),"model.hdf5")
-MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk = FALSE)
+print(p)
 ```
 
 ```{r}
-library(reticulate)
+plot_factors(MOFAobject.trained, 
+  factors = 1:10,
+  color_by = "COVID_status"
+)
+```
 
-# 0. If you don’t have a conda installation yet, bootstrap Miniconda:
-if (length(reticulate::conda_list()) == 0) {
-  reticulate::install_miniconda()
-}
+Take factor 3 for instance. Do the top contributing features make sense? What do they represent? Are they related to COVID-19? Can they be connected to previous downstream analysis?
 
-# 1. See what conda envs you already have:
-reticulate::conda_list()
+```{r}
+# Plotting somalogic weights
+plot_weights(MOFAobject.trained,
+  view = 1,
+  factor = 3,
+  nfeatures = 10,     # Number of features to highlight
+  scale = T,          # Scale weights from -1 to 1
+  abs = F             # Take the absolute value?
+) +
 
-# 2. Create “mofa2” with exactly the packages MOFA2 needs:
-reticulate::conda_create(
-  envname  = "mofa2",
-  packages = c(
-    "python=3.10",
-    "h5py=3.6.0",
-    "numpy=1.23.1",
-    "scipy=1.8.1",
-    "pandas=1.4.3",
-    "scikit-learn=1.1.1",
-    "dtw-python=1.2.2",
-    "mofapy2=0.7.0"
-  )
+  # Plotting cytokine weights
+  plot_weights(MOFAobject.trained,
+  view = 2,
+  factor = 3,
+  nfeatures = 10,     # Number of features to highlight
+  scale = T,          # Scale weights from -1 to 1
+  abs = F             # Take the absolute value?
+)
+```
+
+```{r}
+plot_top_weights(MOFAobject.trained,
+  view = 1,
+  factor = 3,
+  nfeatures = 10
+) +
+  plot_top_weights(MOFAobject.trained,
+  view = 2,
+  factor = 3,
+  nfeatures = 10
+)
+```
+
+Is the expression homogenous across the samples or can you hint about subgroups (hint: FABPA, H2A3, H2B3B)
+Are there any outliers among the samples? Is it more visible from the somalogic data or the cytokine data?
+
+```{r}
+plot_data_heatmap(MOFAobject.trained,
+  view = 1,         # view of interest
+  factor = 3,             # factor of interest
+  features = 20,          # number of features to plot (they are selected by weight)
+  
+  # extra arguments that are passed to the `pheatmap` function
+  cluster_rows = TRUE, cluster_cols = FALSE,
+  show_rownames = TRUE, show_colnames = FALSE
 )
 
-# 3. Activate it:
-use_condaenv("mofa2", required = TRUE)
-
-# 4. Now rerun your MOFA call:
-MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk = FALSE)
-
+plot_data_heatmap(MOFAobject.trained,
+  view = 2,         # view of interest
+  factor = 3,             # factor of interest
+  features = 20,          # number of features to plot (they are selected by weight)
+  
+  # extra arguments that are passed to the `pheatmap` function
+  cluster_rows = TRUE, cluster_cols = FALSE,
+  show_rownames = TRUE, show_colnames = FALSE
+)
 ```
-```{r}
-library(reticulate)
-use_condaenv("mofa2", required = TRUE)
-
-# And now run your MOFA fit without basilisk:
-MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk = FALSE)
-
-```
-
 
 ```{r}
-outfile = file.path(tempdir(),"model.hdf5")
-MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk=TRUE)
+plot_data_scatter(MOFAobject.trained,
+  view = 1,         # view of interest
+  factor = 3,             # factor of interest
+  features = 5,           # number of features to plot (they are selected by weight)
+  add_lm = TRUE,          # add linear regression
+  color_by = "COVID_status"
+) +
+  plot_data_scatter(MOFAobject.trained,
+  view = 2,         # view of interest
+  factor = 3,             # factor of interest
+  features = 5,           # number of features to plot (they are selected by weight)
+  add_lm = TRUE,          # add linear regression
+  color_by = "COVID_status"
+)
+```
+
+```{r}
+set.seed(42)
+umap_model <- run_umap(MOFAobject.trained)
+tsne_model <- run_tsne(MOFAobject.trained)
+```
+
+```{r}
+plot_dimred(umap_model,
+  method = "UMAP",  # method can be either "TSNE" or "UMAP"
+  color_by = "COVID_status"
+)
+
+plot_dimred(tsne_model,
+  method = "TSNE",  # method can be either "TSNE" or "UMAP"
+  color_by = "COVID_status"
+)
 ```
 
 
+# SessionInfo
+
+```{r}
+sessionInfo()
+```
 
 
-
-
-
-
-
-
+```{r}
+library(data.table)
+library(pheatmap)
+library()
+```
 
