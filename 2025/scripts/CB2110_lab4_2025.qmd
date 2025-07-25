@@ -197,12 +197,43 @@ tcga_data <- list(miRNA = miRNA,
 
 lapply(tcga_data,dim)
 ```
+
+Let's have a look at the dataframes
+
 ```{r}
-# Let's have a look at the dataframes
 print(tcga_data$miRNA)
 print(tcga_data$mRNA)
 print(tcga_data$protein)
 ```
+
+We need to transfom the data so that the samples are in the columns and the features are in the rows. This is because MOFA expects the data to be in this format.
+
+```{r}
+swap_id_and_samples <- function(df, id_col = "ID") {
+  # 1) extract the ID vector
+  ids <- df[[id_col]]
+  # 2) drop the ID column and transpose
+  mat <- t(df[ , setdiff(names(df), id_col)])
+  # 3) coerce back to a data.frame
+  out <- as.data.frame(mat, stringsAsFactors = FALSE)
+  # 4) assign the old IDs as column names
+  colnames(out) <- ids
+  # 5) assign the old variable names as row names
+  rownames(out) <- setdiff(names(df), id_col)
+  return(out)
+}
+
+# apply to each of your tcga_data elements:
+tcga_data$miRNA   <- swap_id_and_samples(tcga_data$miRNA,   id_col = "ID")
+tcga_data$mRNA    <- swap_id_and_samples(tcga_data$mRNA,    id_col = "ID")
+tcga_data$protein <- swap_id_and_samples(tcga_data$protein, id_col = "ID")
+
+# now printing:
+print(tcga_data$miRNA)
+print(tcga_data$mRNA)
+print(tcga_data$protein)
+```
+
 
 ```{r}
 utils::data("CLL_data")

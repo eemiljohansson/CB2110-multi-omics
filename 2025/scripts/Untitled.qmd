@@ -1,0 +1,445 @@
+---
+title: "Untitled"
+format: html
+---
+
+# Load packages
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(ggridges)
+library(MOFA2)
+library(mofapy2)
+```
+
+```{r}
+select <- dplyr::select
+```
+
+# Read data
+
+```{r}
+covid_metadata <- read_excel("~/R/CB2110-multi-omics/datasets/COVIDome Datasets Version 2.0/COVIDome Sample Metadata.xlsx")
+covid_soma_data <- read_excel("~/R/CB2110-multi-omics/datasets/COVIDome Datasets Version 2.0/COVIDome SOMAscan Dataset.xlsx")
+covid_cytokine_data <- read_excel("~/R/CB2110-multi-omics/datasets/COVIDome Datasets Version 2.0/COVIDome MSD Cytokine Dataset v2.0 for Mendeley 071321.xlsx")
+```
+
+# Clean data
+
+## Metadata
+
+```{r}
+head(covid_metadata, n = 10)
+```
+
+One approximation that we are doing in this study is to assume that the patients that were below 20 years of age are of 20 years of age. This is because we want to retain as many samples as possible, and the number of patients below 20 years of age is very small.
+
+```{r}
+covid_metadata <- covid_metadata |>
+  mutate(Age = ifelse(Age < 20, 20, Age)) |> # replace ages below 20 with 20
+  mutate(Age = as.numeric(Age)) |> # convert Age to numeric
+  mutate(Age = ifelse(is.na(Age), median(Age, na.rm = TRUE), Age)) # replace NAs with median age
+```
+
+Let's check the data again.
+
+```{r}
+head(covid_metadata, n = 10)
+```
+
+## Somalogic data
+
+Do we have samples as row or columns in this dataframe?
+MOFA requires samples as columns and features as rows.
+How many analytes do we have in this dataset?
+What is the unit of the analytes?
+
+```{r}
+head(covid_soma_data, n = 10)
+```
+
+We are going to stick with the Analyte, since that is the same column name in the cytokine data.
+Also, since the data shows intensity values that have a wide range, we will log-transform the data to make it more manageable for analysis.
+
+```{r}
+covid_soma_data <- covid_soma_data |>
+  select(Analyte, contains("CUcovID")) |> # keep only the EntrezGeneSymbol and intensity columns
+  pivot_longer(cols = -Analyte, names_to = "Sample", values_to = "Intensity") |> # pivot to long format
+  mutate(Intensity = log2(Intensity + 1)) |> # log-transform the intensity values
+  pivot_wider(names_from = Sample, values_from = Intensity) |> # pivot back to wide format with samples as columns
+  unnest()
+```
+
+Let's check the data again
+
+```{r}
+head(covid_soma_data, n = 10)
+```
+
+## Cytokine data
+
+We seem to have missing values in the cytokine data. How should we handle them?
+We will choose to mean impute those values. What is mean imputation? How does that affect our data? What is the benefits and drawbacks of this approach? What other approaches are there?
+
+```{r}
+head(covid_cytokine_data, n = 10)
+```
+
+We should also log-transform the data to make it more manageable for analysis, just like we did with the SOMAscan data.
+Could we have log-transformed the data before mean imputation? What would have been the effect of that?
+
+```{r}
+covid_cytokine_data <- covid_cytokine_data |>
+  select(Analyte, contains("CUcovID")) |> # keep only the EntrezGeneSymbol and intensity columns
+  pivot_longer(cols = -Analyte, names_to = "Sample", values_to = "Intensity") |> # pivot to long format
+  mutate(Intensity = ifelse(is.na(Intensity), mean(Intensity, na.rm = TRUE), Intensity)) |> # mean impute the intensity values
+  mutate(Intensity = log2(Intensity + 1)) |> # log-transform the intensity values
+  pivot_wider(names_from = Sample, values_from = Intensity) |> # pivot back to wide format with samples as columns
+  unnest()
+```
+
+Let's check the data again. Are the missing values gone?
+
+```{r}
+head(covid_cytokine_data, n = 10)
+```
+
+# Check data
+
+## Metadata
+
+Let's check the distribution of COVID_status, Sex, and Age.
+What can you tell from this information?
+How is the distribution of Male / Female in positive / negative COVID status?
+
+```{r}
+# Count the COVID_status and divide it into Sex
+covid_metadata |>
+  group_by(COVID_status, Sex) |>
+  summarise(Count = n()) |>
+  pivot_longer(cols = Count, names_to = "Count_Type", values_to = "Count") |>
+  ggplot(aes(x = Count, y = COVID_status, fill = Sex)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal()
+
+# Check the distribution of Age
+covid_metadata |>
+  ggplot(aes(x = Age, fill = COVID_status)) +
+  geom_histogram(bins = 30, position = "dodge") +
+  theme_minimal() +
+  labs(title = "Distribution of Age by COVID Status", x = "Age", y = "Count")
+
+# Distribution as a ridge plot (age)
+covid_metadata |>
+  ggplot(aes(x = Age, y = COVID_status, fill = COVID_status)) +
+  geom_density_ridges(alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Distribution of Age by COVID Status", x = "Age", y = "COVID Status")
+
+# Distribution as a ridge plot (sex)
+covid_metadata |>
+  ggplot(aes(x = Age, y = COVID_status, fill = Sex)) +
+  geom_density_ridges(alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Distribution of Age by COVID Status", x = "Age", y = "COVID Status")
+```
+
+## Somalogic data
+
+Let's check the dimensions of the SOMAscan dataset. What platform was used? Does our dataset match the same number of analytes in that platform, if no, why?
+What type of proteins seem to have the highest mean intensity values? Are these proteins related to COVID-19? What have we not taken into account in this analysis?
+
+```{r}
+covid_soma_data |>
+  dim()
+
+# Rank the analytes in terms of their mean intensity values
+covid_soma_data |>
+  # Make columns into rows and rows into columns
+  rowwise() |>
+  mutate(Mean_Intensity = mean(c_across(-Analyte), na.rm = TRUE)) |>
+  arrange(desc(Mean_Intensity)) |>
+  select(Analyte, Mean_Intensity) |>
+  head(20)
+```
+
+## Cytokine data
+
+What type of proteins seem to have the highest mean intensity values? Are these proteins related to COVID-19? What have we not taken into account in this analysis?
+Can you find CRP? Does it have a high mean intensity value? What does that tell you about the data? Does its intesity value make sense or could it be an effect of something else?
+
+```{r}
+covid_cytokine_data |>
+  dim()
+
+# Rank the analytes in terms of their mean intensity values
+covid_cytokine_data |>
+  # Make columns into rows and rows into columns
+  rowwise() |>
+  mutate(Mean_Intensity = mean(c_across(-Analyte), na.rm = TRUE)) |>
+  arrange(desc(Mean_Intensity)) |>
+  select(Analyte, Mean_Intensity) |>
+  head(20)
+```
+
+# Creating the MOFA model and train the model
+
+First we need to put the analytes as rownames
+
+```{r}
+COVID_data <- list(
+  somalogic = covid_soma_data |>
+    mutate(Analyte = make.unique(Analyte)) |>
+    column_to_rownames("Analyte"),
+  cytokine  = covid_cytokine_data |>
+    mutate(Analyte = make.unique(Analyte)) |>
+    column_to_rownames("Analyte")
+)
+
+COVID_data
+```
+
+We need to transform each dataframe into a matrix, since MOFA requires matrices as input.
+
+```{r}
+COVID_matrices <- lapply(COVID_data, function(df){
+  m <- as.matrix(df)
+  storage.mode(m) <- "numeric"   # just to be sure it’s all numeric
+  m
+})
+
+str(COVID_matrices$somalogic)
+```
+
+Try to break some of the code. What do MOFA require the input to be in order to create the MOFA object?
+
+```{r}
+# 1. Inspect the two sets of column names
+colnames(COVID_matrices$somalogic)
+colnames(COVID_matrices$cytokine)
+
+# 2. Find the intersection (samples present in both)
+common_samples <- intersect(
+  colnames(COVID_matrices$somalogic),
+  colnames(COVID_matrices$cytokine)
+)
+length(common_samples)  # how many samples survived?
+```
+
+
+```{r}
+# 1. A little helper to replace Greek letters with ASCII names
+clean_feature_names <- function(x) {
+  x %>%
+    str_replace_all("α", "alpha") %>%
+    str_replace_all("β", "beta")  %>%
+    str_replace_all("γ", "gamma") %>%
+    str_replace_all("–", "-")      # if you have en-dashes etc.
+}
+
+# 3. Subset & reorder each matrix so they match exactly
+COVID_matrices_aligned <- lapply(COVID_matrices, function(mat) {
+  mat[, common_samples, drop = FALSE]
+})
+
+
+# 2. Apply it to each view’s rownames
+COVID_matrices_clean <- lapply(COVID_matrices_aligned, function(mat) {
+  rn <- rownames(mat)
+  rownames(mat) <- clean_feature_names(rn)
+  mat
+})
+
+# 3. (Optional) Check that there are no more non-ASCII chars
+bad <- unique(unlist(lapply(COVID_matrices_clean, function(mat) {
+  rn <- rownames(mat)
+  grep("[^ -~]", rn, value = TRUE)
+})))
+if (length(bad)) stop("Still non-ASCII names: ", paste(bad, collapse = ", "))
+
+# 4. Now rebuild
+MOFAobject <- create_mofa(COVID_matrices_clean)
+MOFAobject
+class(MOFAobject)
+```
+
+## Plot data overview
+
+Visualize the number of views (rows) and the number of groups (columns) exist, what are their corresponding dimensionalities and how many missing information they have (grey bars).
+
+```{r}
+plot_data_overview(MOFAobject)
+```
+
+## Question 2
+
+How is the distribution of the multi-omics data set? Are there any potential biases that could be introduced based on the number of measurement coverage per omics technology?
+
+## Define MOFA options
+
+### Data options
+
+Important arguments:
+
+* scale_groups: scale groups to the same total variance? Default is FALSE
+* scale_views: scale views to the same total variance? Default is FALSE
+* views: views names
+* groups: groups names
+
+```{r}
+data_opts <- get_default_data_options(MOFAobject)
+data_opts
+```
+
+## Model options
+
+Important arguments:
+
+* num_factors: number of factors
+* likelihoods: likelihood per view (options are “gaussian”, “poisson”, “bernoulli”). By default they are inferred automatically.
+* spikeslab_factors: use spike-slab sparsity prior in the factors? default is FALSE.
+* spikeslab_weights: use spike-slab sparsity prior in the weights? default is TRUE.
+* ard_factors: use ARD prior in the factors? Default is TRUE if using multiple groups.
+* ard_weights: use ARD prior in the weights? Default is TRUE if using multiple views.
+
+```{r}
+model_opts <- get_default_model_options(MOFAobject)
+model_opts$num_factors <- 10 # This sets the number of factors
+
+model_opts
+```
+
+## Training options
+
+Important arguments:
+
+* maxiter: number of iterations. Default is 1000.
+* convergence_mode: “fast”, “medium” (default), “slow”. For exploration, the fast mode is good enough.
+* seed: random seed
+
+```{r}
+train_opts <- get_default_training_options(MOFAobject)
+train_opts$convergence_mode <- "slow"
+train_opts$seed <- 42
+
+train_opts
+```
+
+## Train the MOFA model
+
+Prepare the MOFA object
+
+```{r}
+MOFAobject <- prepare_mofa(MOFAobject,
+  data_options = data_opts,
+  model_options = model_opts,
+  training_options = train_opts
+)
+
+MOFAobject
+```
+
+Train the MOFA model. Remember that in this step the MOFA2 R package connets with the mofapy2 Python package using reticulate. This is the source of most problems when running MOFA. See our FAQ section if you have issues. The output is saved in the file specified as outfile. If none is specified, the output is saved in a temporary location.
+
+conda install -c conda-forge h5py numpy scipy pandas scikit-learn dtw-python mofapy2
+
+```{r}
+
+```
+
+
+```{r}
+# Path to Basilisk’s venv:
+venv <- file.path(
+  Sys.getenv("HOME"),
+  "Library/Caches/org.R-project.R/R/basilisk/1.21.5/MOFA2/1.19.0/mofa_env"
+)
+
+# 1.1 – install HDF5 via Homebrew if you haven’t already
+# (run this in your terminal, not in R)
+#   brew update
+#   brew install hdf5
+
+# 1.2 – use reticulate to pip‐install the HDF5 dev headers into the venv
+py_bin <- file.path(venv, "bin", "python")
+system2(py_bin, args = c("-m", "pip", "install",
+                        sprintf("--global-option=build_ext"),
+                        sprintf("--global-option=-I%s/include", Sys.getenv("HOMEBREW_PREFIX", "/opt/homebrew")),
+                        sprintf("--global-option=-L%s/lib",  Sys.getenv("HOMEBREW_PREFIX", "/opt/homebrew")),
+                        "h5py"))
+
+# This forces h5py to compile *after* seeing your Homebrew HDF5 install.
+
+# Now that h5py is in place, run your MOFA fit again
+MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk = TRUE)
+```
+
+
+```{r}
+library(reticulate)
+use_condaenv("mofa2", required = TRUE)
+
+# Now Basilisk will see the fully-resolved Conda env
+outfile = file.path(tempdir(),"model.hdf5")
+MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk = FALSE)
+```
+
+```{r}
+library(reticulate)
+
+# 0. If you don’t have a conda installation yet, bootstrap Miniconda:
+if (length(reticulate::conda_list()) == 0) {
+  reticulate::install_miniconda()
+}
+
+# 1. See what conda envs you already have:
+reticulate::conda_list()
+
+# 2. Create “mofa2” with exactly the packages MOFA2 needs:
+reticulate::conda_create(
+  envname  = "mofa2",
+  packages = c(
+    "python=3.10",
+    "h5py=3.6.0",
+    "numpy=1.23.1",
+    "scipy=1.8.1",
+    "pandas=1.4.3",
+    "scikit-learn=1.1.1",
+    "dtw-python=1.2.2",
+    "mofapy2=0.7.0"
+  )
+)
+
+# 3. Activate it:
+use_condaenv("mofa2", required = TRUE)
+
+# 4. Now rerun your MOFA call:
+MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk = FALSE)
+
+```
+```{r}
+library(reticulate)
+use_condaenv("mofa2", required = TRUE)
+
+# And now run your MOFA fit without basilisk:
+MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk = FALSE)
+
+```
+
+
+```{r}
+outfile = file.path(tempdir(),"model.hdf5")
+MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk=TRUE)
+```
+
+
+
+
+
+
+
+
+
+
+
