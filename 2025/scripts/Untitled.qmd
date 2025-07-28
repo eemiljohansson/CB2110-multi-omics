@@ -12,6 +12,7 @@ library(ggridges)
 library(MOFA2)
 library(reticulate)
 library(patchwork)
+library(ggrepel)
 ```
 
 ```{r}
@@ -457,6 +458,22 @@ plot_factor(MOFAobject.trained,
 ```
 
 ```{r}
+plot_factor(MOFAobject.trained, 
+  factor = 1:10,
+  color_by = "Sex",
+  shape_by = "COVID_status"
+)
+```
+
+```{r}
+plot_factor(MOFAobject.trained, 
+  factor = 1:10,
+  color_by = "COVID_status",
+  shape_by = "COVID_status"
+)
+```
+
+```{r}
 p <- plot_factor(MOFAobject.trained, 
   factors = 1:10,
   color_by = "COVID_status",
@@ -469,11 +486,29 @@ p <- plot_factor(MOFAobject.trained,
 
 # The output of plot_factor is a ggplot2 object that we can edit
 p <- p + 
-  scale_color_manual(values=c("Positive"="black", "Negative"="red")) +
-  scale_fill_manual(values=c("Positive"="black", "Negative"="red"))
+  scale_color_manual(values=c("Positive"="firebrick", "Negative"="steelblue")) +
+  scale_fill_manual(values=c("Positive"="firebrick", "Negative"="steelblue"))
 
 print(p)
 ```
+
+We can also extract the data from the previous plot to add our own customizations. For instance, we can observer which samples are outliers in the factor space, and we can label them with their sample name. Do we observe the same sample being outliers/extreme points across all factors or just in some of them? What could be the reason for that?
+
+```{r}
+p$data |>
+  ggplot(aes(x = factor, y = value, fill = color_by)) +
+  geom_violin(alpha = 0.25) +
+  geom_point(aes(color = color_by), size = 3, position = position_dodge(width = 0.9)) +
+  ggrepel::geom_text_repel(aes(label = sample), 
+    position = position_dodge(width = 0.9), 
+    size = 3, show.legend = FALSE) +
+  facet_wrap(~ factor, scales = "free", ncol = 5) +
+  scale_color_manual(values=c("Positive"="firebrick", "Negative"="steelblue")) +
+  scale_fill_manual(values=c("Positive"="firebrick", "Negative"="steelblue")) +
+  theme_minimal() +
+  labs(title = "Factors by COVID Status", x = "Factor", y = "Value")
+```
+
 
 ```{r}
 plot_factors(MOFAobject.trained, 
