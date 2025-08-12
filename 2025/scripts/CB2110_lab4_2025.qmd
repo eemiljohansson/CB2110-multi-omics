@@ -155,47 +155,27 @@ BiocManager::install("MOFA2") # can take up to 20 minutes to install the MOFA2 p
 What possible issues are there when trying to integrating different omics data?
 
 ```{r}
-install.packages("data.table")
-```
+# List of required packages
+required_packages <- c(
+  "data.table",
+  "ggplot2",
+  "tidyverse",
+  "utils",
+  "MASS",
+  "psych",
+  "ggpubr",
+  "ggrepel",
+  "patchwork",
+  "ggridges",
+  "readxl"
+)
 
-```{r}
-install.packages("ggplot2")
-```
-
-```{r}
-install.packages("tidyverse")
-```
-
-```{r}
-install.packages("utils")
-```
-
-```{r}
-install.packages("MASS")
-```
-
-```{r}
-install.packages("psych")
-```
-
-```{r}
-install.packages("ggpubr")
-```
-
-```{r}
-install.packages("ggrepel")
-```
-
-```{r}
-install.packages("patchwork")
-```
-
-```{r}
-install.packages("ggridges")
-```
-
-```{r}
-install.packages("readxl")
+# Install any missing packages
+for (pkg in required_packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+}
 ```
 
 ## Load the packages
@@ -441,6 +421,8 @@ common_samples <- intersect(
 length(common_samples)  # how many samples survived?
 ```
 
+A MOFA object is created by providing the multi-omics data set. The data set is a list where each element corresponds to a view (e.g., mRNA expression, somatic mutations, drug response). Each view is a data.frame where rows correspond to samples and columns to features.
+
 ```{r}
 # 1. A little helper to replace Greek letters with ASCII names
 clean_feature_names <- function(x) {
@@ -553,13 +535,74 @@ MOFAobject <- prepare_mofa(MOFAobject,
 MOFAobject
 ```
 
+The next step is to train the actual model. To save time, we will load an already precomputed model.
+
+# Load precomputed model
+
+From this point on, we will work with a precomputed model that we will load from the web. This model has been trained using the same data set and the same options as the one we just prepared. As a safety measure, we will remove all objects from the current environment before loading the model, as it could cause an error while loading the MOFA object to something already called "MOFAobject". Don't worry, this won't affect the loaded packages.
+
+First we save the data to a temporary file, so we can load it later. (**This step is not needed if you already have all files.**)
+
+```{r}
+# Save proteomics data
+#COVID_data$somalogic |> 
+#  write.csv("../data/covid/covid_soma_data.csv", row.names = TRUE)
+
+# Save cytokine data
+#COVID_data$cytokine |> 
+#  write.csv("../data/covid/covid_cytokine_data.csv", row.names = TRUE)
+
+# Save the metadata
+#covid_metadata |> 
+#  write.csv("../data/covid/covid_metadata.csv", row.names = FALSE)
+```
+
+We will clean the environment to make sure that we don't have any conflicts with the loaded packages or objects. This is a good practice to avoid errors when loading the MOFA object.
+
+```{r}
+rm(list = ls()) # Cleans the current environment, but keeps the loaded packages
+```
+
+Now we load the precomputed model.
+
+```{r}
+MOFAobject.trained <- load_model("../data/covid/covid_model.hdf5")
+```
+
+Let's also read in the separate dataframes if you would like to use them in any other downstream analysis.
+
+```{r}
+# Read in the SOMAscan data
+covid_soma_data <- read.csv("../data/covid/covid_soma_data.csv", row.names = 1)
+head(covid_soma_data, n = 10)
+
+# Read in the cytokine data
+covid_cytokine_data <- read.csv("../data/covid/covid_cytokine_data.csv", row.names = 1)
+head(covid_cytokine_data, n = 10)
+
+# Read in the metadata
+covid_metadata <- read.csv("../data/covid/covid_metadata.csv")
+head(covid_metadata, n = 10)
+```
+
+
+# A word of caution!
+
+**This section is optional and is not required to complete the lab.**
+
+Feel free to run the MOFA model on your own data, or on the precomputed model. If you want to run the MOFA model on your own data, you can follow the steps below.
+**Please NOTE** that this can take a substantial amount of time, depending on the size of your data and the number of factors you choose to use. The training can take from a few minutes to a few hours, so be patient. **This step is NOT recommended if you are using Google Collab as it takes too much time**. 
+
+**Also NOTE** that it case `use_basilisk = TRUE` does not work, you may have to set up your own conda environment with the required packages. This is explained below.
+
+## Running your own MOFA
+
 Train the MOFA model. Remember that in this step the MOFA2 R package connets with the mofapy2 Python package using reticulate. This is the source of most problems when running MOFA. See our FAQ section if you have issues. The output is saved in the file specified as outfile. If none is specified, the output is saved in a temporary location.
 
 ```{r}
 #outfile = file.path(tempdir(),"model.hdf5")
 #MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk=TRUE)
 ```
-
 
 ```{r}
 Sys.setenv(HDF5_DIR = system("brew --prefix hdf5", intern = TRUE))
@@ -577,41 +620,41 @@ pip install mofapy2==0.7.0
 
 ```{r}
 # Activate your working mofa2 conda environment
-use_condaenv("mofa2", required = TRUE)
+#use_condaenv("mofa2", required = TRUE)
 
 # Ensure MOFA2 sees your correct Python:
-reticulate::py_config()
+#reticulate::py_config()
 
 # Now run MOFA without Basilisk
-outfile <- "../data/covid/covid_model.hdf5"
-MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk=FALSE)
+#outfile <- "../data/covid/covid_model.hdf5"
+#MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk=FALSE)
 ```
 
 ```{r}
-MOFAobject.trained
+#MOFAobject.trained
 ```
 
 Now if you wish to save the model, you can do so with the following command:
 
 ```{r}
-print(filepath)
+#print(filepath)
 ```
 
 ```{r}
-slotNames(MOFAobject.trained)
+#slotNames(MOFAobject.trained)
 ```
 
 ```{r}
-names(MOFAobject.trained@data)
+#names(MOFAobject.trained@data)
 ```
 
 ```{r}
-dim(MOFAobject.trained@data$somalogic$group1)
-dim(MOFAobject.trained@data$cytokine$group1)
+#dim(MOFAobject.trained@data$somalogic$group1)
+#dim(MOFAobject.trained@data$cytokine$group1)
 ```
 
 ```{r}
-names(MOFAobject.trained@expectations)
+#names(MOFAobject.trained@expectations)
 ```
 
 # Downstream analysis
@@ -644,177 +687,28 @@ samples_metadata(MOFAobject.trained) <- covid_metadata |> rename(sample = Record
   filter(sample %in% samples_names(MOFAobject.trained)$group1) |> as.data.frame()
 ```
 
-```{r}
-plot_factor_cor(MOFAobject.trained)
-```
-
-
-
-```{r}
-CLL_metadata <- fread("ftp://ftp.ebi.ac.uk/pub/databases/mofa/cll_vignette/sample_metadata.txt")
-```
-
-# Create the MOFA object and train the model
-
-Create the MOFA object.
-
-A MOFA object is created by providing the multi-omics data set. The data set is a list where each element corresponds to a view (e.g., mRNA expression, somatic mutations, drug response). Each view is a data.frame where rows correspond to samples and columns to features.
-
-```{r}
-MOFAobject <- create_mofa(CLL_data)
-MOFAobject
-```
-
-## Plot data overview
-
-Visualize the number of views (rows) and the number of groups (columns) exist, what are their corresponding dimensionalities and how many missing information they have (grey bars).
-
-```{r}
-plot_data_overview(MOFAobject)
-```
-
-## Question 2
-
-How is the distribution of the multi-omics data set? Are there any potential biases that could be introduced based on the number of measurement coverage per omics technology?
-
-## Define MOFA options
-
-### Data options
-
-Important arguments:
-
-* scale_groups: scale groups to the same total variance? Default is FALSE
-* scale_views: scale views to the same total variance? Default is FALSE
-* views: views names
-* groups: groups names
-
-```{r}
-data_opts <- get_default_data_options(MOFAobject)
-data_opts
-```
-
-## Model options
-
-Important arguments:
-
-* num_factors: number of factors
-* likelihoods: likelihood per view (options are “gaussian”, “poisson”, “bernoulli”). By default they are inferred automatically.
-* spikeslab_factors: use spike-slab sparsity prior in the factors? default is FALSE.
-* spikeslab_weights: use spike-slab sparsity prior in the weights? default is TRUE.
-* ard_factors: use ARD prior in the factors? Default is TRUE if using multiple groups.
-* ard_weights: use ARD prior in the weights? Default is TRUE if using multiple views.
-
-```{r}
-model_opts <- get_default_model_options(MOFAobject)
-model_opts$num_factors <- 15
-
-model_opts
-```
-
-## Training options
-
-Important arguments:
-
-* maxiter: number of iterations. Default is 1000.
-* convergence_mode: “fast”, “medium” (default), “slow”. For exploration, the fast mode is good enough.
-* seed: random seed
-
-```{r}
-train_opts <- get_default_training_options(MOFAobject)
-train_opts$convergence_mode <- "slow"
-train_opts$seed <- 42
-
-train_opts
-```
-
-## Train the MOFA model
-
-Prepare the MOFA object
-
-```{r}
-MOFAobject <- prepare_mofa(MOFAobject,
-  data_options = data_opts,
-  model_options = model_opts,
-  training_options = train_opts
-)
-```
-
-The next step is to train the actual model. To save time, we will load an already precomputed model.
-
-# Load precomputed model
-
-From this point on, we will work with a precomputed model that we will load from the web. This model has been trained using the same data set and the same options as the one we just prepared. As a safety measure, we will remove all objects from the current environment before loading the model, as it could cause an error while loading the MOFA object to something already called "MOFAobject". Don't worry, this won't affect the loaded packages.
-
-```{r}
-rm(list = ls()) # Cleans the current environment, but keeps the loaded packages
-```
-
-We need to load the metadata file again.
-
-```{r}
-CLL_metadata <- fread("ftp://ftp.ebi.ac.uk/pub/databases/mofa/cll_vignette/sample_metadata.txt")
-```
-
-Now we load the precomputed model.
-
-```{r}
-MOFAobject <- readRDS(url("http://ftp.ebi.ac.uk/pub/databases/mofa/cll_vignette/MOFA2_CLL.rds"))
-```
-
-# Overview of the trained MOFA model
-
-## Slots
-
-The MOFA object consists of multiple slots where relevant data and information is stored. For descriptions, you can read the documentation using ?MOFA. The most important slots are:
-
-* data: input data used to train the model (features are centered at zero mean)
-* samples_metadata: sample metadata information
-* expectations: expectations of the posterior distributions for the Weights and the Factors
-
-```{r}
-slotNames(MOFAobject)
-```
-
-```{r}
-names(MOFAobject@data)
-```
-
-```{r}
-dim(MOFAobject@data$Drugs$group1)
-```
-
-```{r}
-names(MOFAobject@expectations)
-```
-
-# Dimensionality of the factor matrix: 200 samples, 15 factors
-
-```{r}
-dim(MOFAobject@expectations$Z$group1)
-```
-
-# Dimensionality of the mRNA Weight matrix: 5000 features, 15 factors
-
-```{r}
-dim(MOFAobject@expectations$W$mRNA)
-```
-
-## Add sample metadata to the model
-
-The sample metadata must be provided as a data.frame and it must contain a column sample with the sample IDs. Make sure that the samples in the metadata match the samples in the model
-
-# Add sample metadata to the model
-
-```{r}
-samples_metadata(MOFAobject) <- CLL_metadata
-```
-
-## Correlation between factors
+## Corelation analysis
 
 A good sanity check is to verify that the Factors are largely uncorrelated. In MOFA there are no orthogonality constraints such as in Principal Component Analysis, but if there is a lot of correlation between Factors this suggests a poor model fit. Reasons? Perhaps you used too many factors or perhaps the normalisation is not adequate.
 
 ```{r}
-plot_factor_cor(MOFAobject)
+plot_factor_cor(MOFAobject.trained)
+```
+
+```{r}
+# Total variance explained per view and group
+head(MOFAobject.trained@cache$variance_explained$r2_total[[1]]) # group 1
+```
+
+```{r}
+# Variance explained for every factor in per view and group
+head(MOFAobject.trained@cache$variance_explained$r2_per_factor[[1]]) # group 1
+```
+
+## Variance
+
+```{r}
+plot_variance_explained(MOFAobject.trained, x="view", y="factor")
 ```
 
 ## Plot variance decomposition
@@ -824,10 +718,10 @@ plot_factor_cor(MOFAobject)
 **The most important insight that MOFA generates is the variance decomposition analysis**. This plot shows the percentage of variance explained by each factor across each data modality (and group, if provided). It summarises the sources of variation from a complex heterogeneous data set in a single figure.
 
 ```{r}
-plot_variance_explained(MOFAobject, max_r2=15)
+plot_variance_explained(MOFAobject.trained, x="group", y="factor", plot_total = T)[[2]]
 ```
 
-## Question 3
+# Question 3
 
 What insights from the data can we learn just from inspecting this plot?
 
@@ -843,8 +737,189 @@ A reasonable question is whether the model is providing a good fit to the data. 
 In this data set, using only K=15 factors the model explains up to ~54% of the variation in the Drug response and ~42% of the variation in the mRNA data. This is quite remarkable for a linear model.
 
 ```{r}
-plot_variance_explained(MOFAobject, plot_total = T)[[2]]
+plot_variance_explained(MOFAobject.trained, plot_total = T)[[2]]
 ```
+
+## Factor analysis
+
+```{r}
+plot_factor(MOFAobject.trained, 
+  factor = 1:10,
+  color_by = "Age",
+  shape_by = "COVID_status"
+)
+
+plot_factor(MOFAobject.trained, 
+  factor = 1:10,
+  color_by = "Sex",
+  shape_by = "COVID_status"
+)
+
+plot_factor(MOFAobject.trained, 
+  factor = 1:10,
+  color_by = "COVID_status",
+  shape_by = "COVID_status"
+)
+
+p <- plot_factor(MOFAobject.trained, 
+  factors = 1:10,
+  color_by = "COVID_status",
+  dot_size = 3,        # change dot size
+  dodge = T,           # dodge points with different colors
+  legend = F,          # remove legend
+  add_violin = T,      # add violin plots,
+  violin_alpha = 0.25  # transparency of violin plots
+)
+
+# The output of plot_factor is a ggplot2 object that we can edit
+p <- p + 
+  scale_color_manual(values=c("Positive"="firebrick", "Negative"="steelblue")) +
+  scale_fill_manual(values=c("Positive"="firebrick", "Negative"="steelblue"))
+
+print(p)
+```
+
+We can also extract the data from the previous plot to add our own customizations. For instance, we can observer which samples are outliers in the factor space, and we can label them with their sample name. Do we observe the same sample being outliers/extreme points across all factors or just in some of them? What could be the reason for that?
+
+```{r}
+p$data |>
+  ggplot(aes(x = factor, y = value, fill = color_by)) +
+  geom_violin(alpha = 0.25) +
+  geom_point(aes(color = color_by), size = 3, position = position_dodge(width = 0.9)) +
+  ggrepel::geom_text_repel(aes(label = sample), 
+    position = position_dodge(width = 0.9), 
+    size = 3, show.legend = FALSE) +
+  facet_wrap(~ factor, scales = "free", ncol = 5) +
+  scale_color_manual(values=c("Positive"="firebrick", "Negative"="steelblue")) +
+  scale_fill_manual(values=c("Positive"="firebrick", "Negative"="steelblue")) +
+  theme_minimal() +
+  labs(title = "Factors by COVID Status", x = "Factor", y = "Value")
+```
+
+We can also investigate the factors by how well different factors separates the data.
+
+```{r}
+plot_factors(MOFAobject.trained, 
+  factors = 1:10,
+  color_by = "COVID_status"
+)
+```
+
+### Factor weights
+
+Take factor 3 for instance. Do the top contributing features make sense? What do they represent? Are they related to COVID-19? Can they be connected to previous downstream analysis?
+
+```{r}
+# Plotting somalogic weights
+plot_weights(MOFAobject.trained,
+  view = 1,
+  factor = 3,
+  nfeatures = 10,     # Number of features to highlight
+  scale = T,          # Scale weights from -1 to 1
+  abs = F             # Take the absolute value?
+) +
+
+  # Plotting cytokine weights
+  plot_weights(MOFAobject.trained,
+  view = 2,
+  factor = 3,
+  nfeatures = 10,     # Number of features to highlight
+  scale = T,          # Scale weights from -1 to 1
+  abs = F             # Take the absolute value?
+)
+```
+
+```{r}
+plot_top_weights(MOFAobject.trained,
+  view = 1,
+  factor = 3,
+  nfeatures = 10
+) +
+  plot_top_weights(MOFAobject.trained,
+  view = 2,
+  factor = 3,
+  nfeatures = 10
+)
+```
+
+## Heatmap
+
+Is the expression homogenous across the samples or can you hint about subgroups (hint: FABPA, H2A3, H2B3B)
+Are there any outliers among the samples? Is it more visible from the somalogic data or the cytokine data?
+
+```{r}
+plot_data_heatmap(MOFAobject.trained,
+  view = 1,         # view of interest
+  factor = 3,             # factor of interest
+  features = 20,          # number of features to plot (they are selected by weight)
+  
+  # extra arguments that are passed to the `pheatmap` function
+  cluster_rows = TRUE, cluster_cols = FALSE,
+  show_rownames = TRUE, show_colnames = FALSE
+)
+
+plot_data_heatmap(MOFAobject.trained,
+  view = 2,         # view of interest
+  factor = 3,             # factor of interest
+  features = 20,          # number of features to plot (they are selected by weight)
+  
+  # extra arguments that are passed to the `pheatmap` function
+  cluster_rows = TRUE, cluster_cols = FALSE,
+  show_rownames = TRUE, show_colnames = FALSE
+)
+```
+
+## Correlation analysis of features
+
+```{r}
+plot_data_scatter(MOFAobject.trained,
+  view = 1,         # view of interest
+  factor = 3,             # factor of interest
+  features = 5,           # number of features to plot (they are selected by weight)
+  add_lm = TRUE,          # add linear regression
+  color_by = "COVID_status"
+) +
+  plot_data_scatter(MOFAobject.trained,
+  view = 2,         # view of interest
+  factor = 3,             # factor of interest
+  features = 5,           # number of features to plot (they are selected by weight)
+  add_lm = TRUE,          # add linear regression
+  color_by = "COVID_status"
+)
+```
+
+## Dimensionality reduction
+
+```{r}
+set.seed(42)
+umap_model <- run_umap(MOFAobject.trained)
+tsne_model <- run_tsne(MOFAobject.trained)
+```
+
+```{r}
+plot_dimred(umap_model,
+  method = "UMAP",  # method can be either "TSNE" or "UMAP"
+  color_by = "COVID_status"
+)
+
+plot_dimred(tsne_model,
+  method = "TSNE",  # method can be either "TSNE" or "UMAP"
+  color_by = "COVID_status"
+)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Characterisation of Factor 1
 
