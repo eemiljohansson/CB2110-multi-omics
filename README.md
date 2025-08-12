@@ -1,12 +1,14 @@
 ## Instructions for CB2110 - LAB4
 
-!CHANGE: [Link Google colab notebook.](https://colab.research.google.com/drive/1eQdzOJdNoMAbogB9PqgLW30WgJRqCTKG)
+![alt_text](images/colab.png)
+[Link Google colab notebook.](https://colab.research.google.com/drive/1eQdzOJdNoMAbogB9PqgLW30WgJRqCTKG)
 
 # CB2110 - LAB4
 
 ## Integrative analysis for multi-omics data
 
 In this lab we will be integrating plasma proteomics data from SomaLogic with cytometric profiling data from COVID-19 patients using Multi-Omics Factor Analysis (MOFA).
+
 ![alt_text](images/MOFA.png)
 
 ## Important - Read before you start the lab
