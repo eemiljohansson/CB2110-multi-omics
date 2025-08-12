@@ -6,6 +6,9 @@
 
 ## Integrative analysis for multi-omics data
 
+In this lab we will be integrating plasma proteomics data from SomaLogic with cytometric profiling data from COVID-19 patients using Multi-Omics Factor Analysis (MOFA).
+![alt_text](images/MOFA.pdf)
+
 ## Important - Read before you start the lab
 
 **Before you start reading the introduction and instructions**, *execute* the first cell block which will load the MOFA R package, which is essential for this lab, this should take between ~20-30 min if using Google Colab, (less if you install through your local PC or MAC in R Studio).
