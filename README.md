@@ -7,7 +7,7 @@
 ## Integrative analysis for multi-omics data
 
 In this lab we will be integrating plasma proteomics data from SomaLogic with cytometric profiling data from COVID-19 patients using Multi-Omics Factor Analysis (MOFA).
-![alt_text](images/MOFA.pdf)
+![alt_text](images/MOFA.png)
 
 ## Important - Read before you start the lab
 
