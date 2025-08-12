@@ -1,6 +1,6 @@
 ## Instructions for CB2110 - LAB4
 
-![alt_text](images/colab.png)
+![alt="Alt Text" style="width:25%"](images/colab.png)
 [Link Google colab notebook.](https://colab.research.google.com/drive/1eQdzOJdNoMAbogB9PqgLW30WgJRqCTKG)
 
 # CB2110 - LAB4
