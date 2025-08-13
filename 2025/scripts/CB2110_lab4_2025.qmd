@@ -150,7 +150,7 @@ if (!require("BiocManager", quietly = TRUE))
 BiocManager::install("MOFA2") # can take up to 20 minutes to install the MOFA2 package on Google Colab, ~1 min on RStudio.
 ```
 
-## Question 1
+# Question 1
 
 What possible issues are there when trying to integrating different omics data?
 
@@ -467,10 +467,6 @@ Visualize the number of views (rows) and the number of groups (columns) exist, w
 plot_data_overview(MOFAobject)
 ```
 
-## Question 2
-
-How is the distribution of the multi-omics data set? Are there any potential biases that could be introduced based on the number of measurement coverage per omics technology?
-
 ## Define MOFA options
 
 ### Data options
@@ -486,6 +482,10 @@ Important arguments:
 data_opts <- get_default_data_options(MOFAobject)
 data_opts
 ```
+
+# Question 2
+
+Think about the dimensionality of the data and the chosen number of factors chosen for the model. How many factors do you think we should use? Why?
 
 ## Model options
 
@@ -704,6 +704,9 @@ head(MOFAobject.trained@cache$variance_explained$r2_total[[1]]) # group 1
 # Variance explained for every factor in per view and group
 head(MOFAobject.trained@cache$variance_explained$r2_per_factor[[1]]) # group 1
 ```
+# Question 3
+
+By inspecting the variance plots below, what can you tell about the variance explained by each factor? Do you see any patterns? Are there any factors that explain more variance than others? What could be the reason for that?
 
 ## Variance
 
@@ -718,12 +721,8 @@ plot_variance_explained(MOFAobject.trained, x="view", y="factor")
 **The most important insight that MOFA generates is the variance decomposition analysis**. This plot shows the percentage of variance explained by each factor across each data modality (and group, if provided). It summarises the sources of variation from a complex heterogeneous data set in a single figure.
 
 ```{r}
-plot_variance_explained(MOFAobject.trained, x="group", y="factor", plot_total = T)[[2]]
+plot_variance_explained(MOFAobject.trained, x="group", y="factor", plot_total = TRUE)[[2]]
 ```
-
-# Question 3
-
-What insights from the data can we learn just from inspecting this plot?
 
 ## Total variance explained per view
 
@@ -737,8 +736,12 @@ A reasonable question is whether the model is providing a good fit to the data. 
 In this data set, using only K=15 factors the model explains up to ~54% of the variation in the Drug response and ~42% of the variation in the mRNA data. This is quite remarkable for a linear model.
 
 ```{r}
-plot_variance_explained(MOFAobject.trained, plot_total = T)[[2]]
+plot_variance_explained(MOFAobject.trained, x = "view", y = "factor", plot_total = TRUE)[[2]]
 ```
+
+# Question 4
+
+By inspecting the factor value plots below, what can you tell about the factors? Do you see any patterns? Are there any factors that explain certain clinical variables more than others? What could be the reason for that?
 
 ## Factor analysis
 
@@ -807,7 +810,7 @@ plot_factors(MOFAobject.trained,
 
 ### Factor weights
 
-Take factor 3 for instance. Do the top contributing features make sense? What do they represent? Are they related to COVID-19? Can they be connected to previous downstream analysis?
+Take factor 3 for instance. *Do the top contributing features make sense? What do they represent? Are they related to COVID-19? Can they be connected to previous downstream analysis?*
 
 ```{r}
 # Plotting somalogic weights
@@ -935,13 +938,13 @@ There are a few systematic strategies to characterise the molecular etiology und
 Let’s test the association between MOFA Factors and Gender, survival outcome (dead vs alive) and age:
 
 ```{r}
-correlate_factors_with_covariates(MOFAobject,
-  covariates = c("Gender","died","age"),
+correlate_factors_with_covariates(MOFAobject.trained,
+  covariates = c("Sex","Age","COVID_status"),
   plot="log_pval"
 )
 ```
 
-## Question 4
+# Question 4
 
 What insights from the data can we learn just from inspecting this plot?
 
@@ -954,13 +957,13 @@ Each factor captures a different source of variability in the data. Mathematical
 * **color_by**: specifies color of sample.
 
 ```{r}
-plot_factor(MOFAobject,
+plot_factor(MOFAobject.trained,
   factors = "all", # Can be changed, see "help" in R Studio for more information
-  color_by = "Factor1"
+  color_by = "Factor3"
 )
 ```
 
-## Question 5
+# Question 5
 
 Describe in your own words what a latent factor is and what the latent factor value infers, use choose two plotted figures from this notebook to examplify.
 
@@ -974,9 +977,9 @@ The weights provide a score for each feature on each factor. Features with no as
 By looking at the variance explained plot, we saw that Factor 1 captures variation in all data modalities. Out of all omics, the somatic mutation data is a good place to start, as somatic mutations are very sparse, easy to interpret and any change in the DNA is likely to have downstream consequences to all other molecular layers. Let’s plot the weights:
 
 ```{r}
-plot_weights(MOFAobject,
- view = "Mutations",
- factor = 1,
+plot_weights(MOFAobject.trained,
+ view = "somalogic",
+ factor = 3,
  nfeatures = 10,     # Top number of features to highlight
  scale = T           # Scale weights from -1 to 1
 )
@@ -987,9 +990,9 @@ Notice that most features lie at zero, indicating that most features have no ass
 An alternative visualistion to the full distribution of weights is to do a line plot that displays only the top features with the corresponding weight sign on the right:
 
 ```{r}
-plot_top_weights(MOFAobject,
- view = "Mutations",
- factor = 1,
+plot_top_weights(MOFAobject.trained,
+ view = "somalogic",
+ factor = 3,
  nfeatures = 10,     # Top number of features to highlight
  scale = T           # Scale weights from -1 to 1
 )
@@ -997,22 +1000,22 @@ plot_top_weights(MOFAobject,
 
 ## Question 6
 
-Choose another latent factor by changing the argument above for plot_weights() and or plot_top_weights(), `factor = 1`, from 1 to another factor (i.e., 2-15).
+Choose another latent factor by changing the argument above for plot_weights() and or plot_top_weights(), `factor = 3`, from 3 to another factor (i.e., 2-10).
 Why did you choose that factor? What features can you see?
-Select any feature of your own choice, what literature can you find that supports the feature as an important player in CLL?
+Select any feature of your own choice, what literature can you find that supports the feature as an important player in COVID-19?
 
-IGHV has a positve weight. This means that samples with positive Factor 1 values have IGHV mutation whereas samples with negative Factor 1 values do not have the IGHV mutation. To confirm this, let’s plot the Factor values and colour the IGHV mutation status.
+Vimentin has a positve weight. This means that samples with positive Factor 1 values have IGHV mutation whereas samples with negative Factor 3 values do not have the IGHV mutation. To confirm this, let’s plot the Factor values and colour the IGHV mutation status.
 
 ```{r}
-plot_factor(MOFAobject,
-  factors = 1,
-  color_by = "IGHV",
+plot_factor(MOFAobject.trained,
+  factors = 3,
+  color_by = "Vimentin",
   add_violin = TRUE,
   dodge = TRUE
 )
 ```
 
-## Question 7
+# Question 7
 
 Pick 2 mutations from any selected feature (e.g., IGHV), use the function `plot_factor()` to show their distribution using the argument `color_by = "YOUR GENE HERE"`, also choose which factor you want to highlight by using the argument `factors = YOUR FACTOR HERE`. For your selected genes, include the respective protein concentration (a screenshot of the boxplot) as given in [the disease section](https://www.proteinatlas.org/humanproteome/disease) of [the Human Protein Atlas (HPA)](https://www.proteinatlas.org/), together with the plot given by `plot_factor()`.
 
@@ -1026,9 +1029,9 @@ How does the protein expression look on the HPA? How does the gene look using th
 We can also plot Factor values coloured by other covariates, for example Gender. As shown above, this variable has no association with Factor 1:
 
 ```{r}
-plot_factor(MOFAobject,
-  factors = 1,
-  color_by = "Gender",
+plot_factor(MOFAobject.trained,
+  factors = 3,
+  color_by = "Sex",
   dodge = TRUE,
   add_violin = TRUE
 )
@@ -1039,9 +1042,9 @@ plot_factor(MOFAobject,
 From the variance explained plot we know that Factor 1 drives variation across all data modalities. Let’s visualise the mRNA expression changes that are associated with Factor 1:
 
 ```{r}
-plot_weights(MOFAobject,
-  view = "mRNA",
-  factor = 1,
+plot_weights(MOFAobject.trained,
+  view = "cytokine",
+  factor = 3,
   nfeatures = 10
 )
 ```
@@ -1051,28 +1054,28 @@ plot_weights(MOFAobject,
 In this case we have a large amount of genes that have large positive and negative weights. Genes with large positive values will be more expressed in the samples with IGHV mutation, whereas genes with large negative values will be more expressed in the samples without the IGHV mutation. Let’s verify this. The function `plot_data_scatter` generates a scatterplot of Factor 1 values (x-axis) versus expression values (y-axis) for the top 4 genes with largest positive weight. Samples are coloured by IGHV status:
 
 ```{r}
-plot_data_scatter(MOFAobject,
-  view = "mRNA",
-  factor = 1,
+plot_data_scatter(MOFAobject.trained,
+  view = "cytokine",
+  factor = 3,
   features = 4,
   sign = "positive",
-  color_by = "IGHV"
-) + labs(y="RNA expression")
+  color_by = "Vimentin"
+) + labs(y="Cytokine abundance")
 ```
 
 This function generates a scatterplot of Factor 1 values (x-axis) versus expression values (y-axis) for the top 4 genes with largest negative weight. Samples are coloured by IGHV status:
 
 ```{r}
-plot_data_scatter(MOFAobject,
-  view = "mRNA",
-  factor = 1,
+plot_data_scatter(MOFAobject.trained,
+  view = "cytokine",
+  factor = 3,
   features = 4,
   sign = "negative",
-  color_by = "IGHV"
-) + labs(y="RNA expression")
+  color_by = "Vimentin"
+) + labs(y="Cytokine abundance")
 ```
 
-## Question 8
+# Question 8
 
 How does the scatterpot look? How is the combination of RNA expressions (ENSG) and mutations (g.e., IGHV) aiding in risk stratification of CLL?
 
@@ -1084,7 +1087,11 @@ In addition to exploring the individual weights for each factor, we can use enri
 
 Gene set annotations are provided as a binary membership matrix. Genes are stored in the rows, pathways are stored in the columns. A value of 1 indicates that gene 𝑗
  belongs to the pathway 𝑖
-
+ 
+```{r}
+library(MOFAdata)
+```
+ 
 ```{r}
 utils::data(reactomeGS)
 head(colnames(reactomeGS))
@@ -1105,9 +1112,9 @@ An important consideration when running GSEA is that MOFA contains positive and 
 # GSEA on positive weights, with default options
 
 ```{r}
-res.positive <- run_enrichment(MOFAobject,
+res.positive <- run_enrichment(MOFAobject.trained,
   feature.sets = reactomeGS,
-  view = "mRNA",
+  view = "somalogic",
   sign = "positive"
 )
 ```
@@ -1115,9 +1122,9 @@ res.positive <- run_enrichment(MOFAobject,
 # GSEA on negative weights, with default options
 
 ```{r}
-res.negative <- run_enrichment(MOFAobject,
+res.negative <- run_enrichment(MOFAobject.trained,
   feature.sets = reactomeGS,
-  view = "mRNA",
+  view = "somalogic",
   sign = "negative"
 )
 ```
@@ -1154,7 +1161,7 @@ Let’s plot the GSEA results for Factor 5. It seems that this Factor is capturi
 plot_enrichment(res.positive, factor = 5, max.pathways = 15)
 ```
 
-## Question 9
+# Question 9
 
 Pick two pathways for any factor of your choosing. Conduct a quick literature search (two references). Has the pathway been associated with CLL before? What role does the pathway have in relation to CLL?
 
@@ -1168,7 +1175,7 @@ plot_enrichment_detailed(
 )
 ```
 
-## Question 10
+# Question 10
 
 Working with latent factors and weights can be daunting as they can seem ambigious. To perhaps make more sense of the meaning of latent factor and weights, this data have been extracted into dataframes from the trained MOFA object as `factors_df` and `weights_df`. You can `view()` these dataframes below.
 
@@ -1177,7 +1184,7 @@ Make your own plot in any way you see fit, you are allowed to use any generative
 **Again**, you have total freedom in creating any sort of plot based on either `factors_df`, `weights_df` or both if you wish to combine them. Tap into your creativity. Then explain what you can tell from this figure. It can be as simple or complex as you like it to be.
 
 ```{r}
-factors <- get_factors(MOFAobject)
+factors <- get_factors(MOFAobject.trained)
 
 # Convert to dataframe
 factors_df <- data.frame(factors)
@@ -1187,7 +1194,7 @@ head(factors_df) # Try without head() to see the full data frame
 
 ```{r}
 # Extract weights
-weights_list <- get_weights(MOFAobject)
+weights_list <- get_weights(MOFAobject.trained)
 
 weights_df <- imap_dfr(weights_list, ~ as.data.frame(.x) %>%
   tibble::rownames_to_column(var = "Feature") %>%
@@ -1201,7 +1208,7 @@ weights_df <- imap_dfr(weights_list, ~ as.data.frame(.x) %>%
     values_to = "Weight"
   )
 
-head(weights_df) # Try without head() to see the full data frame
+head(weights_df, n=10) # Try without head() to see the full data frame
 ```
 
 ```{r}
@@ -1215,7 +1222,7 @@ head(weights_df) # Try without head() to see the full data frame
 ###
 ```
 
-## Bonus point:
+# Bonus point:
 
 Pick a single latent factor and run the code in this notebook to describe as much information you could get from that factor, i.e., association to outcome, relation to other factors, feature weights, top features, enrichment analysis, etc. Include figures and try to tell a story about what your selected factor could imply. You can think of this bonus point as a brief essay question.
 
@@ -1225,4 +1232,4 @@ Pick a single latent factor and run the code in this notebook to describe as muc
 sessionInfo()
 ```
 
-End of document.
+End of file.
