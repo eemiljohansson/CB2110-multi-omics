@@ -322,6 +322,9 @@ covid_metadata |>
   theme_minimal() +
   labs(title = "Distribution of Age by COVID Status", x = "Age", y = "Count")
 
+ggsave("../plots/pdf/metadata_age_covid_status.pdf", width = 8, height = 6)
+ggsave("../plots/png/metadata_age_covid_status.png", width = 8, height = 6)
+
 # Distribution as a ridge plot (age)
 covid_metadata |>
   ggplot(aes(x = Age, y = COVID_status, fill = COVID_status)) +
@@ -329,12 +332,18 @@ covid_metadata |>
   theme_minimal() +
   labs(title = "Distribution of Age by COVID Status", x = "Age", y = "COVID Status")
 
+ggsave("../plots/pdf/metadata_age_covid_distribution_status.pdf", width = 8, height = 6)
+ggsave("../plots/png/metadata_age_distribution_covid_status.png", width = 8, height = 6)
+
 # Distribution as a ridge plot (sex)
 covid_metadata |>
   ggplot(aes(x = Age, y = COVID_status, fill = Sex)) +
   geom_density_ridges(alpha = 0.7) +
   theme_minimal() +
   labs(title = "Distribution of Age by COVID Status", x = "Age", y = "COVID Status")
+
+ggsave("../plots/pdf/metadata_age_sex_covid_distribution_status.pdf", width = 8, height = 6)
+ggsave("../plots/png/metadata_age_sex_distribution_covid_status.png", width = 8, height = 6)
 ```
 
 ## Somalogic data
