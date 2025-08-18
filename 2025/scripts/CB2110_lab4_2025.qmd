@@ -42,11 +42,11 @@ Start of document.
 
 ## Integrative analysis for multi-omics data
 
-## Important - Read before you start the lab
+# Important - Read before you start the lab
 
 **Before you start reading the introduction and instructions**, *execute* the first cell block which will load the MOFA R package, which is essential for this lab, this should take between ~20-30 min if using Google Colab, (less if you install through your local PC or MAC in R Studio).
 
-### Instructions on how to hand in the lab
+# Instructions on how to hand in the lab
 
 Questions are distributed throughout this notebook. You can view where the questions are by pressing on the "table of contents" icon right below the Google Colab icon ("outline" in R Studio), which is situated on the top left on this page (top right in R Studio).
 
@@ -101,7 +101,9 @@ Coronavirus disease (COVID-19) is an infectious disease caused by the SARS-CoV-2
 Most people infected with the virus will experience mild to moderate respiratory illness and recover without requiring special treatment. However, some will become seriously ill and require medical attention. Older people and those with underlying medical conditions like cardiovascular disease, diabetes, chronic respiratory disease, or cancer are more likely to develop serious illness. Anyone can get sick with COVID-19 and become seriously ill or die at any age. 
 Reference: WHO (gathered on 2025-07-29) [link to WHO page](https://www.who.int/health-topics/coronavirus#tab=tab_1).
 
-The data we are using comes from a multi-omics study on COVID-19, published in The Journal of Cell Reports: ["**The COVIDome Explorer researcher portal**"](https://doi.org/10.1016/j.celrep.2021.109527) by Kelly Daniel Sullivan et al (2021).
+The data we are using comes from a multi-omics study on COVID-19, published in The Journal of Cell Reports: ["**The COVIDome Explorer researcher portal**"](https://doi.org/10.1016/j.celrep.2021.109527) by Kelly Daniel Sullivan et al (2021). See paper for more information on the study methods.
+
+In this session, we will integrate SOMAscan proteomics data with MSD Cytokine Profiles; and Sample Metadata. This data was collected from [Mendeley](https://doi.org/10.17632/2mc6rrc5j3.1).
 
 This notebook draws its inspiration from a MOFA study that used the aforementioned study and published their work in Molecular Systems Biology: ["**Multi-Omics Factor Analysis-a framework for unsupervised integration of multi-omics data sets**"](https://pubmed.ncbi.nlm.nih.gov/29925568/) by Richard Argelaguet et al (2018).
 
@@ -152,7 +154,7 @@ BiocManager::install("MOFA2") # can take up to 20 minutes to install the MOFA2 p
 
 # Question 1
 
-What possible issues are there when trying to integrating different omics data?
+**What possible issues are there when trying to integrating different omics data?**
 
 ```{r}
 # List of required packages
@@ -388,7 +390,7 @@ covid_cytokine_data |>
 
 # Creating the MOFA model and train the model
 
-First we need to put the analytes as rownames
+First we need to put the analytes as rownames and samples as columns in each dataframe. This is because MOFA requires the data to be in this format.
 
 ```{r}
 COVID_data <- list(
@@ -399,7 +401,7 @@ COVID_data <- list(
     mutate(Analyte = make.unique(Analyte)) |>
     column_to_rownames("Analyte")
 )
-
+# Check the data
 COVID_data
 ```
 
@@ -494,7 +496,7 @@ data_opts
 
 # Question 2
 
-Think about the dimensionality of the data and the chosen number of factors chosen for the model. How many factors do you think we should use? Why?
+**Think about the dimensionality of the data and the chosen number of factors chosen for the model. How many factors do you think we should use? Why?**
 
 ## Model options
 
@@ -594,10 +596,9 @@ covid_metadata <- read.csv("../data/covid/covid_metadata.csv")
 head(covid_metadata, n = 10)
 ```
 
-
 # A word of caution!
 
-**This section is optional and is not required to complete the lab.**
+**This section is NOT mandatory, it is COMPLETELY optional and is NOT required to complete the lab.**
 
 Feel free to run the MOFA model on your own data, or on the precomputed model. If you want to run the MOFA model on your own data, you can follow the steps below.
 **Please NOTE** that this can take a substantial amount of time, depending on the size of your data and the number of factors you choose to use. The training can take from a few minutes to a few hours, so be patient. **This step is NOT recommended if you are using Google Collab as it takes too much time**. 
@@ -670,16 +671,23 @@ Now if you wish to save the model, you can do so with the following command:
 
 ## Overview of the trained MOFA model
 
-Check the dimensionality of the factor matrix. How many factors do we have? How many samples do we have?
+Now that we have trained the MOFA model, we can start exploring the results. But first, let's try to understand the structure of the trained MOFA object as illustrated in the [MOFA paper](https://www.embopress.org/doi/full/10.15252/msb.20178124)
+Check the dimensionality of the factor matrix. *How many factors do we have? How many samples do we have?*
+![Figure 1 in the MOFA paper shows the structure of the trained MOFA object.](https://www.embopress.org/cms/10.15252/msb.20178124/asset/3e7094b0-bc52-4a40-8fb5-23c6b6daeec3/assets/graphic/msb178124-fig-0001-m.png)
+
+We can access the Z matrix. *Does the dimensions for the Z matrix make sense?*
 
 ```{r}
+# Z matrix
 dim(MOFAobject.trained@expectations$Z$group1)
 ```
 
-Dimensionality of the matrices
+You can also check the dimensionality of the W matrices in the trained MOFA object. *What would correspond to Y1 and Y2?*
 
 ```{r}
+# W1 matrix
 dim(MOFAobject.trained@expectations$W$somalogic)
+# W2 matrix
 dim(MOFAobject.trained@expectations$W$cytokine)
 ```
 
@@ -698,29 +706,45 @@ samples_metadata(MOFAobject.trained) <- covid_metadata |> rename(sample = Record
 
 ## Corelation analysis
 
-A good sanity check is to verify that the Factors are largely uncorrelated. In MOFA there are no orthogonality constraints such as in Principal Component Analysis, but if there is a lot of correlation between Factors this suggests a poor model fit. Reasons? Perhaps you used too many factors or perhaps the normalisation is not adequate.
+A good sanity check is to verify that the Factors are largely uncorrelated. In MOFA there are no orthogonality constraints such as in Principal Component Analysis, but if there is a lot of correlation between Factors this suggests a poor model fit. *Reasons?* Perhaps you used too many factors or perhaps the normalisation is not adequate. *Why do we have 10 factors here?*
 
 ```{r}
 plot_factor_cor(MOFAobject.trained)
+
+pdf("../plots/pdf/factor_correlation.pdf", width = 8, height = 6)
+plot_factor_cor(MOFAobject.trained)
+dev.off()
+
+png("../plots/png/factor_correlation.png", width = 800, height = 600)
+plot_factor_cor(MOFAobject.trained)
+dev.off()
 ```
 
 ```{r}
 # Total variance explained per view and group
-head(MOFAobject.trained@cache$variance_explained$r2_total[[1]]) # group 1
+head(MOFAobject.trained@cache$variance_explained$r2_total[[1]])
 ```
 
 ```{r}
 # Variance explained for every factor in per view and group
-head(MOFAobject.trained@cache$variance_explained$r2_per_factor[[1]]) # group 1
+head(MOFAobject.trained@cache$variance_explained$r2_per_factor[[1]], n=10)
 ```
 # Question 3
 
-By inspecting the variance plots below, what can you tell about the variance explained by each factor? Do you see any patterns? Are there any factors that explain more variance than others? What could be the reason for that?
+**By inspecting the variance plots below, what can you tell about the variance explained by each factor? Do you see any patterns? Are there any factors that explain more variance than others? What could be the reason for that?**
 
 ## Variance
 
 ```{r}
 plot_variance_explained(MOFAobject.trained, x="view", y="factor")
+
+pdf("../plots/pdf/variance_explained_per_view.pdf", width = 8, height = 6)
+plot_variance_explained(MOFAobject.trained, x="view", y="factor")
+dev.off()
+
+png("../plots/png/variance_explained_per_view.png", width = 800, height = 600)
+plot_variance_explained(MOFAobject.trained, x="view", y="factor")
+dev.off()
 ```
 
 ## Plot variance decomposition
@@ -731,6 +755,14 @@ plot_variance_explained(MOFAobject.trained, x="view", y="factor")
 
 ```{r}
 plot_variance_explained(MOFAobject.trained, x="group", y="factor", plot_total = TRUE)[[2]]
+
+pdf("../plots/pdf/variance_explained_per_factor.pdf", width = 8, height = 6)
+plot_variance_explained(MOFAobject.trained, x="group", y="factor", plot_total = TRUE)[[2]]
+dev.off()
+
+png("../plots/png/variance_explained_per_factor.png", width = 800, height = 600)
+plot_variance_explained(MOFAobject.trained, x="group", y="factor", plot_total = TRUE)[[2]]
+dev.off()
 ```
 
 ## Total variance explained per view
@@ -748,11 +780,37 @@ In this data set, using only K=15 factors the model explains up to ~54% of the v
 plot_variance_explained(MOFAobject.trained, x = "view", y = "factor", plot_total = TRUE)[[2]]
 ```
 
+# Characterisation of Factors
+
+There are a few systematic strategies to characterise the molecular etiology underlying the MOFA Factors and to relate them to the sample covariates:
+
+* **Association analysis between the sample metadata and the Factor values**.
+* **Inspection of factor values**.
+* **Inspection of the feature weights**.
+* **Gene set enrichment analysis on the mRNA weights**.
+
+## Association analysis
+
+Let’s test the association between MOFA Factors and Gender, survival outcome (dead vs alive) and age:
+
+```{r}
+correlate_factors_with_covariates(MOFAobject.trained,
+  covariates = c("Sex","Age","COVID_status"),
+  plot="log_pval"
+)
+```
+
 # Question 4
 
-By inspecting the factor value plots below, what can you tell about the factors? Do you see any patterns? Are there any factors that explain certain clinical variables more than others? What could be the reason for that?
+**By inspecting the factor value plots below, what can you tell about the factors? Do you see any patterns? Are there any factors that explain certain clinical variables more than others? What could be the reason for that?**
 
 ## Factor analysis
+
+**How do we interpret the factor values?**
+Each factor captures a different source of variability in the data. Mathematically, each Factor is defined by a linear combination of the input features. As the data is centered prior to running MOFA, each Factor ordinates cells along a one-dimensional axis that is centered at zero. Samples with different signs manifest opposite phenotypes along the inferred axis of variation, with higher absolute value indicating a stronger effect. Note that the interpretation of MOFA factors is analogous to the interpretation of the principal components in PCA.
+
+* **factors**: character vector with the factor names, or numeric vector with the indices of the factors to use, or "all" to plot all factors.
+* **color_by**: specifies color of sample.
 
 ```{r}
 plot_factor(MOFAobject.trained, 
@@ -791,7 +849,7 @@ p <- p +
 print(p)
 ```
 
-We can also extract the data from the previous plot to add our own customizations. For instance, we can observer which samples are outliers in the factor space, and we can label them with their sample name. Do we observe the same sample being outliers/extreme points across all factors or just in some of them? What could be the reason for that?
+We can also extract the data from the previous plot to add our own customizations. For instance, we can observer which samples are outliers in the factor space, and we can label them with their sample name. *Do we observe the same sample being outliers/extreme points across all factors or just in some of them? What could be the reason for that?*
 
 ```{r}
 p$data |>
@@ -808,7 +866,7 @@ p$data |>
   labs(title = "Factors by COVID Status", x = "Factor", y = "Value")
 ```
 
-We can also investigate the factors by how well different factors separates the data.
+We can also investigate the factors by how well different factors separates the data compared to other factors.
 
 ```{r}
 plot_factors(MOFAobject.trained, 
@@ -818,6 +876,9 @@ plot_factors(MOFAobject.trained,
 ```
 
 ### Factor weights
+
+**How do we interpret the weights?**
+The weights provide a score for each feature on each factor. Features with no association with the corresponding factor are expected to have values close to zero, whereas features with strong association with the factor are expected to have large absolute values. The sign of the weights indicates the direction of the effect: a positive weights indicates that the feature has higher levels in the cells with positive factor values, and vice-versa.
 
 Take factor 3 for instance. *Do the top contributing features make sense? What do they represent? Are they related to COVID-19? Can they be connected to previous downstream analysis?*
 
@@ -841,6 +902,8 @@ plot_weights(MOFAobject.trained,
 )
 ```
 
+We can also plot the top features as lollipop plots.
+
 ```{r}
 plot_top_weights(MOFAobject.trained,
   view = 1,
@@ -854,10 +917,38 @@ plot_top_weights(MOFAobject.trained,
 )
 ```
 
+# Question 5
+
+**Choose another latent factor by changing the argument above for plot_weights() and or plot_top_weights(), `factor = 3`, from 3 to another factor (i.e., 2-10).**
+**Why did you choose that factor? What features can you see?**
+**Select any feature of your own choice, what literature can you find that supports the feature as an important player in COVID-19?**
+
+Vimentin has a positve weight. This means that samples with positive Factor 1 values have IGHV mutation whereas samples with negative Factor 3 values do not have the IGHV mutation. To confirm this, let’s plot the Factor values and colour the IGHV mutation status.
+
+```{r}
+plot_factor(MOFAobject.trained,
+  factors = 3,
+  color_by = "Vimentin",
+  add_violin = TRUE,
+  dodge = TRUE
+)
+```
+
+We can also plot Factor values coloured by other covariates, for example sex, as shown below. *Does it make sense? Have we already learnt this?*
+
+```{r}
+plot_factor(MOFAobject.trained,
+  factors = 3,
+  color_by = "Sex",
+  dodge = TRUE,
+  add_violin = TRUE
+)
+```
+
 ## Heatmap
 
 Is the expression homogenous across the samples or can you hint about subgroups (hint: FABPA, H2A3, H2B3B)
-Are there any outliers among the samples? Is it more visible from the somalogic data or the cytokine data?
+*Are there any outliers among the samples? Is it more visible from the somalogic data or the cytokine data?*
 
 ```{r}
 plot_data_heatmap(MOFAobject.trained,
@@ -883,184 +974,26 @@ plot_data_heatmap(MOFAobject.trained,
 
 ## Correlation analysis of features
 
+In this case we have a large amount of genes that have large positive and negative weights. For instance, proteins with large positive values will be more abundant in the samples positive of COVID-19, whereas genes with large negative values will be more expressed in the control samples. Let’s verify this. The function `plot_data_scatter` generates a scatterplot of Factor 3 values (x-axis) versus expression values (y-axis) for the top 4 genes with largest positive weight. 
+
 ```{r}
 plot_data_scatter(MOFAobject.trained,
   view = 1,         # view of interest
   factor = 3,             # factor of interest
-  features = 5,           # number of features to plot (they are selected by weight)
+  features = 6,           # number of features to plot (they are selected by weight)
   add_lm = TRUE,          # add linear regression
   color_by = "COVID_status"
 ) +
   plot_data_scatter(MOFAobject.trained,
   view = 2,         # view of interest
   factor = 3,             # factor of interest
-  features = 5,           # number of features to plot (they are selected by weight)
+  features = 6,           # number of features to plot (they are selected by weight)
   add_lm = TRUE,          # add linear regression
   color_by = "COVID_status"
 )
 ```
 
-## Dimensionality reduction
-
-```{r}
-set.seed(42)
-umap_model <- run_umap(MOFAobject.trained)
-tsne_model <- run_tsne(MOFAobject.trained)
-```
-
-```{r}
-plot_dimred(umap_model,
-  method = "UMAP",  # method can be either "TSNE" or "UMAP"
-  color_by = "COVID_status"
-)
-
-plot_dimred(tsne_model,
-  method = "TSNE",  # method can be either "TSNE" or "UMAP"
-  color_by = "COVID_status"
-)
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Characterisation of Factor 1
-
-There are a few systematic strategies to characterise the molecular etiology underlying the MOFA Factors and to relate them to the sample covariates:
-
-* **Association analysis between the sample metadata and the Factor values**.
-* **Inspection of factor values**.
-* **Inspection of the feature weights**.
-* **Gene set enrichment analysis on the mRNA weights**.
-
-## Association analysis
-
-Let’s test the association between MOFA Factors and Gender, survival outcome (dead vs alive) and age:
-
-```{r}
-correlate_factors_with_covariates(MOFAobject.trained,
-  covariates = c("Sex","Age","COVID_status"),
-  plot="log_pval"
-)
-```
-
-# Question 4
-
-What insights from the data can we learn just from inspecting this plot?
-
-## Plot factor values
-
-**How do we interpret the factor values?**
-Each factor captures a different source of variability in the data. Mathematically, each Factor is defined by a linear combination of the input features. As the data is centered prior to running MOFA, each Factor ordinates cells along a one-dimensional axis that is centered at zero. Samples with different signs manifest opposite phenotypes along the inferred axis of variation, with higher absolute value indicating a stronger effect. Note that the interpretation of MOFA factors is analogous to the interpretation of the principal components in PCA.
-
-* **factors**: character vector with the factor names, or numeric vector with the indices of the factors to use, or "all" to plot all factors.
-* **color_by**: specifies color of sample.
-
-```{r}
-plot_factor(MOFAobject.trained,
-  factors = "all", # Can be changed, see "help" in R Studio for more information
-  color_by = "Factor3"
-)
-```
-
-# Question 5
-
-Describe in your own words what a latent factor is and what the latent factor value infers, use choose two plotted figures from this notebook to examplify.
-
-## Plot feature weights
-
-**How do we interpret the weights?**
-The weights provide a score for each feature on each factor. Features with no association with the corresponding factor are expected to have values close to zero, whereas features with strong association with the factor are expected to have large absolute values. The sign of the weights indicates the direction of the effect: a positive weights indicates that the feature has higher levels in the cells with positive factor values, and vice-versa.
-
-### Plot feature weights for somatic mutations
-
-By looking at the variance explained plot, we saw that Factor 1 captures variation in all data modalities. Out of all omics, the somatic mutation data is a good place to start, as somatic mutations are very sparse, easy to interpret and any change in the DNA is likely to have downstream consequences to all other molecular layers. Let’s plot the weights:
-
-```{r}
-plot_weights(MOFAobject.trained,
- view = "somalogic",
- factor = 3,
- nfeatures = 10,     # Top number of features to highlight
- scale = T           # Scale weights from -1 to 1
-)
-```
-
-Notice that most features lie at zero, indicating that most features have no association with Factor 1. There is however one gene that clearly stands out: IGHV (immunoglobulin heavy chain variable region). [This is the main clinical marker for CLL](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6355490/).
-
-An alternative visualistion to the full distribution of weights is to do a line plot that displays only the top features with the corresponding weight sign on the right:
-
-```{r}
-plot_top_weights(MOFAobject.trained,
- view = "somalogic",
- factor = 3,
- nfeatures = 10,     # Top number of features to highlight
- scale = T           # Scale weights from -1 to 1
-)
-```
-
-## Question 6
-
-Choose another latent factor by changing the argument above for plot_weights() and or plot_top_weights(), `factor = 3`, from 3 to another factor (i.e., 2-10).
-Why did you choose that factor? What features can you see?
-Select any feature of your own choice, what literature can you find that supports the feature as an important player in COVID-19?
-
-Vimentin has a positve weight. This means that samples with positive Factor 1 values have IGHV mutation whereas samples with negative Factor 3 values do not have the IGHV mutation. To confirm this, let’s plot the Factor values and colour the IGHV mutation status.
-
-```{r}
-plot_factor(MOFAobject.trained,
-  factors = 3,
-  color_by = "Vimentin",
-  add_violin = TRUE,
-  dodge = TRUE
-)
-```
-
-# Question 7
-
-Pick 2 mutations from any selected feature (e.g., IGHV), use the function `plot_factor()` to show their distribution using the argument `color_by = "YOUR GENE HERE"`, also choose which factor you want to highlight by using the argument `factors = YOUR FACTOR HERE`. For your selected genes, include the respective protein concentration (a screenshot of the boxplot) as given in [the disease section](https://www.proteinatlas.org/humanproteome/disease) of [the Human Protein Atlas (HPA)](https://www.proteinatlas.org/), together with the plot given by `plot_factor()`.
-
-Here's an example using [GFAP](https://www.proteinatlas.org/ENSG00000131095-GFAP/disease) (note that all proteins on the HPA is not included in this study).
-![](https://cdn.technologynetworks.com/tn/images/body/towardsnextgenerationcancerpredictionmedicine1670236818839.png)
-
-How does the protein expression look on the HPA? How does the gene look using the `plot_factor()`function? What differentiates these two plots?
-
-**TIP**: Gene names can be found by picking different factors using the function `plot_top_weights()` (don't pick any deletions, treatments or DNA methylation). 
-
-We can also plot Factor values coloured by other covariates, for example Gender. As shown above, this variable has no association with Factor 1:
-
-```{r}
-plot_factor(MOFAobject.trained,
-  factors = 3,
-  color_by = "Sex",
-  dodge = TRUE,
-  add_violin = TRUE
-)
-```
-
-## Plot gene weights for mRNA expression
-
-From the variance explained plot we know that Factor 1 drives variation across all data modalities. Let’s visualise the mRNA expression changes that are associated with Factor 1:
-
-```{r}
-plot_weights(MOFAobject.trained,
-  view = "cytokine",
-  factor = 3,
-  nfeatures = 10
-)
-```
-
-## Plot molecular signatures in the imput data
-
-In this case we have a large amount of genes that have large positive and negative weights. Genes with large positive values will be more expressed in the samples with IGHV mutation, whereas genes with large negative values will be more expressed in the samples without the IGHV mutation. Let’s verify this. The function `plot_data_scatter` generates a scatterplot of Factor 1 values (x-axis) versus expression values (y-axis) for the top 4 genes with largest positive weight. Samples are coloured by IGHV status:
+We can also combine the two datasets to see if there are correlation in the cytokine data with the somalogic data. This is useful to see if there are any correlations between the two datasets, and if the cytokine data is related to the somalogic data. *Is there literature to support this?*
 
 ```{r}
 plot_data_scatter(MOFAobject.trained,
@@ -1072,7 +1005,7 @@ plot_data_scatter(MOFAobject.trained,
 ) + labs(y="Cytokine abundance")
 ```
 
-This function generates a scatterplot of Factor 1 values (x-axis) versus expression values (y-axis) for the top 4 genes with largest negative weight. Samples are coloured by IGHV status:
+This function generates a scatterplot of Factor 1 values (x-axis) versus expression values (y-axis) for the top 4 genes with largest negative weight. *Does this make sense?*
 
 ```{r}
 plot_data_scatter(MOFAobject.trained,
@@ -1084,111 +1017,58 @@ plot_data_scatter(MOFAobject.trained,
 ) + labs(y="Cytokine abundance")
 ```
 
-# Question 8
+## Dimensionality reduction
 
-How does the scatterpot look? How is the combination of RNA expressions (ENSG) and mutations (g.e., IGHV) aiding in risk stratification of CLL?
-
-# Gene set enrichment analysis (GSEA)
-
-In addition to exploring the individual weights for each factor, we can use enrichment analysis to look for signiificant associations of factors to genesets. Here, we use the Reactome genesets for illustrations, which is contained in the MOFAdata package. For more details on how the GSEA works we encourage the users to read the [GSEA vignette](https://learn.gencore.bio.nyu.edu/rna-seq-analysis/gene-set-enrichment-analysis/).
-
-## Load Reactome gene set annotations.
-
-Gene set annotations are provided as a binary membership matrix. Genes are stored in the rows, pathways are stored in the columns. A value of 1 indicates that gene 𝑗
- belongs to the pathway 𝑖
- 
 ```{r}
-library(MOFAdata)
-```
- 
-```{r}
-utils::data(reactomeGS)
-head(colnames(reactomeGS))
+set.seed(42)
+umap_model <- run_umap(MOFAobject.trained)
+tsne_model <- run_tsne(MOFAobject.trained)
 ```
 
 ```{r}
-head(rownames(reactomeGS))
+umap_model
 ```
 
-## Run enrichment analysis
-
-These are the steps for doing [Gene Set Enrichment Analysis (GSEA) with MOFA](https://raw.githack.com/bioFAM/MOFA2_tutorials/master/R_tutorials/GSEA.html):
-* **(1) Define your gene set matrix**: this can be specified as a binary matrix where rows are gene sets and columns are genes. A value of 1 indicates that gene j belongs to pathway i. A value of 0 indicates elsewise.
-* **(2) Select a gene set statistic**: the statistic used to quantify the scores at the pathway level. Must be one of the following: mean.diff (difference in the average weight between foreground and background genes) or rank.sum (difference in the sum of ranks between foreground and background genes).
-* **(3) Select a statistical test**: the statistical test used to compute the significance of the gene set statistics under a competitive null hypothesis. Must be one of the following: parametric (a simple and very liberal parametric t-test), cor.adj.parametric (parametric t-test adjusted by the correlation between features), permutation (unparametric, the null distribution is created by permuting the weights. This option is computationally expensive, but it preserves the correlation structure between features in the data.).
-An important consideration when running GSEA is that MOFA contains positive and negative weights. There will be cases where the genes with negative weights all belong to a specific pathway but genes with positive weights belong to other pathways. If this is true, doing GSEA with all of them together could dilute the signal. Hence, we recommend the user to do GSEA separately for (+) and (-) weights, and possibly also jointly with all weights.
-
-# GSEA on positive weights, with default options
 
 ```{r}
-res.positive <- run_enrichment(MOFAobject.trained,
-  feature.sets = reactomeGS,
-  view = "somalogic",
-  sign = "positive"
+plot_dimred(umap_model,
+  method = "UMAP",  # method can be either "TSNE" or "UMAP"
+  color_by = "COVID_status"
+)
+
+plot_dimred(umap_model,
+  method = "UMAP",  # method can be either "TSNE" or "UMAP"
+  color_by = "Factor3"
+)
+
+plot_dimred(umap_model,
+  method = "UMAP",  # method can be either "TSNE" or "UMAP"
+  color_by = "Vimentin"
 )
 ```
 
-# GSEA on negative weights, with default options
-
 ```{r}
-res.negative <- run_enrichment(MOFAobject.trained,
-  feature.sets = reactomeGS,
-  view = "somalogic",
-  sign = "negative"
+plot_dimred(tsne_model,
+  method = "TSNE",  # method can be either "TSNE" or "UMAP"
+  color_by = "COVID_status"
 )
-```
 
-The enrichment analysis returns a list of 5 elements:
+plot_dimred(tsne_model,
+  method = "TSNE",  # method can be either "TSNE" or "UMAP"
+  color_by = "Factor3"
+)
 
-* feature.sets: the feature set matrix filtered by the genes that overlap with the MOFA model.
-* pval: the nominal p-values.
-* pval.adj: the FDR-adjusted p-values.
-* feature.statistics: the feature statistics (i.e. the weights).
-* set.statistics: matrices with the gene set statistics.
-* sigPathways: list with significant pathways per factor at a specified FDR threshold
-
-```{r}
-names(res.positive)
-```
-
-## Plot enrichment analysis results
-
-Plot an overview of the number of significant pathways per factor.
-It seems that most of the factors do not have clear gene set signatures. A clear exception is Factor 5, which has a very strong enrichment for genes with positive weights.
-
-```{r}
-plot_enrichment_heatmap(res.positive)
-```
-
-```{r}
-plot_enrichment_heatmap(res.negative)
-```
-
-Let’s plot the GSEA results for Factor 5. It seems that this Factor is capturing differences in the stress response of the blood cells.
-
-```{r}
-plot_enrichment(res.positive, factor = 5, max.pathways = 15)
-```
-
-# Question 9
-
-Pick two pathways for any factor of your choosing. Conduct a quick literature search (two references). Has the pathway been associated with CLL before? What role does the pathway have in relation to CLL?
-
-It is always advised to not rely only on the p-values and to visualise which genes are driving the enrichment within each pathways. There are problematic cases where a single gene is driving the enrichment results in very small pathways.
-
-```{r}
-plot_enrichment_detailed(
-  enrichment.results = res.positive,
-  factor = 5,
-  max.pathways = 3
+plot_dimred(tsne_model,
+  method = "TSNE",  # method can be either "TSNE" or "UMAP"
+  color_by = "Vimentin"
 )
 ```
 
 # Question 10
 
-Working with latent factors and weights can be daunting as they can seem ambigious. To perhaps make more sense of the meaning of latent factor and weights, this data have been extracted into dataframes from the trained MOFA object as `factors_df` and `weights_df`. You can `view()` these dataframes below.
+**Working with latent factors and weights can be daunting as they can seem ambigious. To perhaps make more sense of the meaning of latent factor and weights, this data have been extracted into dataframes from the trained MOFA object as `factors_df` and `weights_df`. You can `view()` these dataframes below.**
 
-Make your own plot in any way you see fit, you are allowed to use any generative AI model(s) to help you create your own plot. Then explain in your own words what you wish to tell using your figure.
+**Make your own plot in any way you see fit, you are allowed to use any generative AI model(s) to help you create your own plot. Then explain in your own words what you wish to tell using your figure.**
 
 **Again**, you have total freedom in creating any sort of plot based on either `factors_df`, `weights_df` or both if you wish to combine them. Tap into your creativity. Then explain what you can tell from this figure. It can be as simple or complex as you like it to be.
 
@@ -1199,6 +1079,11 @@ factors <- get_factors(MOFAobject.trained)
 factors_df <- data.frame(factors)
 
 head(factors_df) # Try without head() to see the full data frame
+
+# You also have access to each view's factors
+head(covid_soma_data)
+head(covid_cytokine_data)
+head(covid_metadata)
 ```
 
 ```{r}
