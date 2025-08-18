@@ -1,5 +1,5 @@
 ---
-title: "CB2110 - LAB4"
+title: "CB2110 - LAB4 - 2025"
 subtitle: "Multi-omics data integration"
 author: "Emil Johansson, Josefin Kenrick & Thanadol Sutantiwanichkul"
 date: last-modified
@@ -36,7 +36,7 @@ editor:
 
 Start of document.
 
-!CHANGE: [Link Google colab notebook.](https://colab.research.google.com/drive/1eQdzOJdNoMAbogB9PqgLW30WgJRqCTKG)
+[Link Google colab notebook.](https://colab.research.google.com/drive/1wFJIYDBkKr5JWjfctR5AJdnipKIil33r?usp=sharing)
 
 # CB2110 - LAB4
 
