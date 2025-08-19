@@ -34,32 +34,32 @@ editor:
     wrap: 72
 ---
 
-Start of document.
-
-[Link Google colab notebook.](https://colab.research.google.com/drive/1wFJIYDBkKr5JWjfctR5AJdnipKIil33r?usp=sharing)
-
 # CB2110 - LAB4
 
 ## Integrative analysis for multi-omics data
 
+Welcome to the CB2110 computer lab session on multi-omics data integration! In this lab, we will explore how to integrate different omics data types using the Multi-Omics Factor Analysis (MOFA) framework. 
+
 # Important - Read before you start the lab
 
-**Before you start reading the introduction and instructions**, *execute* the first cell block which will load the MOFA R package, which is essential for this lab, this should take between ~20-30 min if using Google Colab, (less if you install through your local PC or MAC in R Studio).
+**Before you start reading the introduction and instructions**, *execute* the first cell block which will load the MOFA R package. Having this package is essential to complete this lab. You have the option to run the lab as you like. For your convenience, we have provided a pre-computed model that you can load and use for the analysis. This will save you time and allow you to focus on the analysis and interpretation of the results. **It is recommended to use R Studio for this lab**, but a Google Colab has also been provided [Link Google colab notebook.](https://colab.research.google.com/drive/1wFJIYDBkKr5JWjfctR5AJdnipKIil33r?usp=sharing). Google Colab is a good option if you do not have R Studio installed on your computer, as it allows you to run R code in the cloud without any installation. However, we recommend using R Studio if you have it installed. If you are using Google Colab, installing the MOFA package should take around 20-30 minutes, while it should take around 1 minute if you are using R Studio.
 
 # Instructions on how to hand in the lab
 
-Questions are distributed throughout this notebook. You can view where the questions are by pressing on the "table of contents" icon right below the Google Colab icon ("outline" in R Studio), which is situated on the top left on this page (top right in R Studio).
+Questions are distributed throughout this notebook. You can view where the questions are by pressing the "outline" in R Studio (or the "table of contents" icon right below the Google Colab icon)-
+
+on the "table of contents" icon right below the Google Colab icon ("outline" in R Studio), which is situated on the top left on this page (top right in R Studio).
 
 You should extract the questions and your answers (including any plots or code if requested) in the format of:
 
-First name: 
-Second name: 
-Date: 
+First name:   Second name:  Date: 
 
 Question 1: [re-type the question here]
+
 Answer: [your answer here]
 
 Question 2: [re-type the question here]
+
 Answer: [your answer here]
 
 ...
@@ -96,27 +96,22 @@ After this computer lab, you will be able to:
 ### Background on the dataset
 
 ![COVID-19](https://www.horby.se/wp-content/uploads/23311.png)
-Coronavirus disease (COVID-19) is an infectious disease caused by the SARS-CoV-2 virus.
+Illustration of the SARS-CoV-2 virus that causes the infectious disease COVID-19.
+
+**WHO description of COVID-19**
 
 Most people infected with the virus will experience mild to moderate respiratory illness and recover without requiring special treatment. However, some will become seriously ill and require medical attention. Older people and those with underlying medical conditions like cardiovascular disease, diabetes, chronic respiratory disease, or cancer are more likely to develop serious illness. Anyone can get sick with COVID-19 and become seriously ill or die at any age. 
 Reference: WHO (gathered on 2025-07-29) [link to WHO page](https://www.who.int/health-topics/coronavirus#tab=tab_1).
 
-The data we are using comes from a multi-omics study on COVID-19, published in The Journal of Cell Reports: ["**The COVIDome Explorer researcher portal**"](https://doi.org/10.1016/j.celrep.2021.109527) by Kelly Daniel Sullivan et al (2021). See paper for more information on the study methods.
+**Data used in this lab**
 
-In this session, we will integrate SOMAscan proteomics data with MSD Cytokine Profiles; and Sample Metadata. This data was collected from [Mendeley](https://doi.org/10.17632/2mc6rrc5j3.1).
+The data we are using comes from a multi-omics study on COVID-19, published in The Journal of Cell Reports: ["**The COVIDome Explorer researcher portal**"](https://doi.org/10.1016/j.celrep.2021.109527) by Kelly Daniel Sullivan et al (2021).
 
-This notebook draws its inspiration from a MOFA study that used the aforementioned study and published their work in Molecular Systems Biology: ["**Multi-Omics Factor Analysis-a framework for unsupervised integration of multi-omics data sets**"](https://pubmed.ncbi.nlm.nih.gov/29925568/) by Richard Argelaguet et al (2018).
+In this session, we will integrate SOMAscan proteomics data with MSD Cytokine Profiles. [Link to the data repository](https://doi.org/10.17632/2mc6rrc5j3.1).
 
-## Goals of this session
+This notebook draws will apply tools describes in ["**Multi-Omics Factor Analysis-a framework for unsupervised integration of multi-omics data sets**"](https://pubmed.ncbi.nlm.nih.gov/29925568/) by Richard Argelaguet et al (2018).
 
-1. a) Pair yourself into groups of two. b) Make your own copy of this notebook.
-2. a) **Answer question 1-10** presented in this notebook in a word file. b) Mark it with the date and your names (g.e., "20240912_EmilJohanssonJosefineKenrick"). c) Export it to PDF.
-3. a) **Answer the bonus question** presented in this notebook in the same word file. 
-3. Submit your notebook to the Canvas.
-
-NOTE! Questions in *italic* are optional and will not be graded, but you are encouraged to answer them as they will help you understand the material better.
-
-# Unsupervised clustering and latent factors
+### Unsupervised clustering and latent factors
 
 While you are installing the necessary R packages for this lab, it's recommended that you'll take a few minutes to understand more what latent factors and factor weights are. Here are a few explanations:
 
@@ -132,12 +127,20 @@ The weights (aka. loadings) provide a score for how strong each feature relates 
 [Wiki page on Factor analysis](https://en.wikipedia.org/wiki/Factor_analysis)
 [Statistics By Jim](https://statisticsbyjim.com/basics/factor-analysis/)
 
-## Installing the MOFA R package
 
-Execute the cell block below as the first thing you do!
+## Goals of this session
+
+1. a) Pair yourself into groups of two. b) Make your own copy of this notebook.
+2. a) **Answer question 1-10** presented in this notebook in a word file. b) Mark it with the date and your names (g.e., "20240912_EmilJohanssonJosefineKenrick"). c) Export it to PDF.
+3. a) **Answer the bonus question** presented in this notebook in the same word file. 
+4. Submit your notebook to the Canvas.
+
+NOTE! Questions in *italic* are optional and will not be graded, but you are encouraged to answer them as they will help you understand the material better.
+
+# Installing the MOFA R package
+
+**Execute the cell block below as the first thing you do!**
 While you are waiting for it to load, you can start by answering question 1 and set up your submission file.
-
-# Installing the MOFA R package that we will try out
 
 ```{r}
 options(repos = c(CRAN = "https://cran.rstudio.com"))
@@ -152,12 +155,8 @@ if (!require("BiocManager", quietly = TRUE))
 BiocManager::install("MOFA2") # can take up to 20 minutes to install the MOFA2 package on Google Colab, ~1 min on RStudio.
 ```
 
-# Question 1
-
-**What possible issues are there when trying to integrating different omics data?**
-
 ```{r}
-# List of required packages
+# List of other required packages
 required_packages <- c(
   "data.table",
   "ggplot2",
@@ -169,7 +168,8 @@ required_packages <- c(
   "ggrepel",
   "patchwork",
   "ggridges",
-  "readxl"
+  "readxl",
+  "naniar"
 )
 
 # Install any missing packages
@@ -180,7 +180,13 @@ for (pkg in required_packages) {
 }
 ```
 
+# Question 1
+
+**Name at least three different possible issues are there when trying to integrating different omics data? And how could you approach a solution for each?**
+
 ## Load the packages
+
+Now let's load the packages that we will use for this lab into our environment.
 
 ```{r}
 # I use these versions of the libraries which worked on 2025-07-29.
@@ -197,6 +203,7 @@ library(ggrepel) # Version 1.42.0
 library(patchwork) # Version 1.3.0
 library(ggridges) # Version 0.5.6
 library(readxl) # Version 1.4.5
+library(naniar) # Version 1.1.0
 ```
 
 ## Specify functions
@@ -214,17 +221,26 @@ covid_soma_data <- read_excel("~/R/CB2110-multi-omics/datasets/COVIDome Datasets
 covid_cytokine_data <- read_excel("~/R/CB2110-multi-omics/datasets/COVIDome Datasets Version 2.0/COVIDome MSD Cytokine Dataset v2.0 for Mendeley 071321.xlsx")
 ```
 
-# Clean data
+## Clean data
 
-Multi-omics data tends to be somewhat messy, therefore we need to clean the data before we can use it for analysis. In this section, we will clean the metadata, SOMAscan data, and cytokine data.
+Multi-omics data tends to be somewhat messy, therefore we have to make sure to clean the data before we can use it for analysis. In this section, we will tidy the metadata, SOMAscan data, and cytokine data for using MOFA.
 
-## Metadata
+### Metadata
+
+One good practice is to always check the data that you are working with as it gives you a good overview of the data and its structure before you dive deeper into the analysis. Let's start by checking the first 10 rows of the metadata file.
 
 ```{r}
 head(covid_metadata, n = 10)
 ```
 
-One approximation that we are doing in this study is to assume that the patients that were below 20 years of age are of 20 years of age. This is because we want to retain as many samples as possible, and the number of patients below 20 years of age is very small.
+One oddity in this data is that patients that are under the age of 20 are listed as "under 20" in the Age column. This is not a numeric value, and we need to convert it to a numeric value before we can use it for analysis. Let's check how many patients are under the age of 20.
+
+```{r}
+covid_metadata |> 
+  filter(Age == "under 20")
+```
+
+For simplicity, we are going to assume that all patients under the age of 20 are 20 years old. The reason for this is that we want to avoid loosing to many samples for the subsequent analysis, altough it is only 15 patients and the number of patients below 20 years of age is very small.
 
 ```{r}
 covid_metadata <- covid_metadata |>
@@ -236,22 +252,24 @@ covid_metadata <- covid_metadata |>
 Let's check the data again.
 
 ```{r}
+covid_metadata |> 
+  filter(Age == "under 20") |>
+  nrow()
+```
+
+```{r}
 head(covid_metadata, n = 10)
 ```
 
-## Somalogic data
+### Somalogic data
 
-*Do we have samples as row or columns in this dataframe?*
-MOFA requires samples as columns and features as rows.
-*How many analytes do we have in this dataset?*
-*What is the unit of the analytes?*
+*Do we have samples as row or columns in this dataframe?*. MOFA requires samples as columns and features as rows. *How many analytes do we have in this dataset?*. *What is the unit of the analytes?*.
 
 ```{r}
 head(covid_soma_data, n = 10)
 ```
 
-We are going to stick with the Analyte, since that is the same column name in the cytokine data.
-Also, since the data shows intensity values that have a wide range, we will log-transform the data to make it more manageable for analysis.
+Another common technique is to log-transform the data to make it more manageable for analysis. This is especially useful when the data has a wide range of values, as it can help to reduce the impact of outliers, make the data more normally distributed, and more manageable for analysis.
 
 ```{r}
 covid_soma_data <- covid_soma_data |>
@@ -268,13 +286,19 @@ Let's check the data again
 head(covid_soma_data, n = 10)
 ```
 
-## Cytokine data
+### Cytokine data
 
 We seem to have missing values in the cytokine data. *How should we handle them?*
 We will choose to mean impute those values. *What is mean imputation? How does that affect our data? What is the benefits and drawbacks of this approach? What other approaches are there?*
 
 ```{r}
 head(covid_cytokine_data, n = 10)
+```
+
+One way to visualize the missing values is to use the `vis_miss` function from the `naniar` package. This will give us a good overview of how many missing values we have in the data and where they are located. *Are the missingness more related to a certain analyte or sample?*. *Would the handling of missingness vary?*
+
+```{r missing values cytokine data, fig.width=10, fig.height=6}
+vis_miss(covid_cytokine_data)
 ```
 
 We should also log-transform the data to make it more manageable for analysis, just like we did with the SOMAscan data.
@@ -296,15 +320,19 @@ Let's check the data again. *Are the missing values gone?*
 head(covid_cytokine_data, n = 10)
 ```
 
-# Check data
+```{r}
+vis_miss(covid_cytokine_data)
+```
 
-## Metadata
+## Check data
+
+### Metadata
 
 Let's check the distribution of COVID_status, Sex, and Age.
 *What can you tell from this information?*
 *How is the distribution of Male / Female in positive / negative COVID status?*
 
-```{r}
+```{r metadata_sex_covid_status}
 # Count the COVID_status and divide it into Sex
 covid_metadata |>
   group_by(COVID_status, Sex) |>
@@ -313,42 +341,36 @@ covid_metadata |>
   ggplot(aes(x = Count, y = COVID_status, fill = Sex)) +
   geom_bar(stat = "identity", position = "dodge") +
   theme_minimal()
+```
 
-ggsave("../plots/pdf/metadata_sex_covid_status.pdf", width = 8, height = 6)
-ggsave("../plots/png/metadata_sex_covid_status.png", width = 8, height = 6)
-
+```{r metadata_age_covid_status}
 # Check the distribution of Age
 covid_metadata |>
   ggplot(aes(x = Age, fill = COVID_status)) +
   geom_histogram(bins = 30, position = "dodge") +
   theme_minimal() +
   labs(title = "Distribution of Age by COVID Status", x = "Age", y = "Count")
+```
 
-ggsave("../plots/pdf/metadata_age_covid_status.pdf", width = 8, height = 6)
-ggsave("../plots/png/metadata_age_covid_status.png", width = 8, height = 6)
-
+```{r metadata_age_covid_distribution_status}
 # Distribution as a ridge plot (age)
 covid_metadata |>
   ggplot(aes(x = Age, y = COVID_status, fill = COVID_status)) +
   geom_density_ridges(alpha = 0.7) +
   theme_minimal() +
   labs(title = "Distribution of Age by COVID Status", x = "Age", y = "COVID Status")
+```
 
-ggsave("../plots/pdf/metadata_age_covid_distribution_status.pdf", width = 8, height = 6)
-ggsave("../plots/png/metadata_age_distribution_covid_status.png", width = 8, height = 6)
-
+```{r metadata_age_sex_covid_distribution_status.pdf}
 # Distribution as a ridge plot (sex)
 covid_metadata |>
   ggplot(aes(x = Age, y = COVID_status, fill = Sex)) +
   geom_density_ridges(alpha = 0.7) +
   theme_minimal() +
   labs(title = "Distribution of Age by COVID Status", x = "Age", y = "COVID Status")
-
-ggsave("../plots/pdf/metadata_age_sex_covid_distribution_status.pdf", width = 8, height = 6)
-ggsave("../plots/png/metadata_age_sex_distribution_covid_status.png", width = 8, height = 6)
 ```
 
-## Somalogic data
+### Somalogic data
 
 ![SomaLogic logo](https://upload.wikimedia.org/wikipedia/commons/d/d0/SomalogicLogo.png)
 
@@ -369,7 +391,7 @@ covid_soma_data |>
   head(20)
 ```
 
-## Cytokine data
+### Cytokine data
 
 *What type of proteins seem to have the highest mean intensity values? Are these proteins related to COVID-19? What have we not taken into account in this analysis?*
 *Can you find CRP? Does it have a high mean intensity value? What does that tell you about the data? Does its intesity value make sense or could it be an effect of something else?*
@@ -388,7 +410,7 @@ covid_cytokine_data |>
   head(20)
 ```
 
-# Creating the MOFA model and train the model
+## Creating the MOFA model and train the model
 
 First we need to put the analytes as rownames and samples as columns in each dataframe. This is because MOFA requires the data to be in this format.
 
@@ -402,7 +424,7 @@ COVID_data <- list(
     column_to_rownames("Analyte")
 )
 # Check the data
-COVID_data
+glimpse(COVID_data)
 ```
 
 We need to transform each dataframe into a matrix, since MOFA requires matrices as input.
@@ -417,18 +439,23 @@ COVID_matrices <- lapply(COVID_data, function(df){
 str(COVID_matrices$somalogic)
 ```
 
-Try to break some of the code. *What do MOFA require the input to be in order to create the MOFA object?*
+Try to break some of the code. *What do MOFA require the input to be in order to create the MOFA object?*.
 
 ```{r}
 # 1. Inspect the two sets of column names
 colnames(COVID_matrices$somalogic)
 colnames(COVID_matrices$cytokine)
+```
 
+For simplicity we will only use the samples that are present in both datasets. *What could be the effect of using all samples, even those that don't overlap with data?*
+
+```{r}
 # 2. Find the intersection (samples present in both)
 common_samples <- intersect(
   colnames(COVID_matrices$somalogic),
   colnames(COVID_matrices$cytokine)
 )
+
 length(common_samples)  # how many samples survived?
 ```
 
@@ -470,9 +497,9 @@ MOFAobject
 class(MOFAobject)
 ```
 
-## Plot data overview
+### Plot data overview
 
-Visualize the number of views (rows) and the number of groups (columns) exist, what are their corresponding dimensionalities and how many missing information they have (grey bars).
+Here, we visualize the number of views (rows) and the number of groups (columns) exist, what are their corresponding dimensionalities and how many missing information they have (grey bars).
 
 ```{r}
 plot_data_overview(MOFAobject)
@@ -494,11 +521,7 @@ data_opts <- get_default_data_options(MOFAobject)
 data_opts
 ```
 
-# Question 2
-
-**Think about the dimensionality of the data and the chosen number of factors chosen for the model. How many factors do you think we should use? Why?**
-
-## Model options
+### Model options
 
 Important arguments:
 
@@ -516,7 +539,7 @@ model_opts$num_factors <- 10 # This sets the number of factors
 model_opts
 ```
 
-## Training options
+### Training options
 
 Important arguments:
 
@@ -532,9 +555,9 @@ train_opts$seed <- 42
 train_opts
 ```
 
-## Train the MOFA model
+## Prepare the MOFA model
 
-Prepare the MOFA object
+Here we finalize the parameters for the final model.
 
 ```{r}
 MOFAobject <- prepare_mofa(MOFAobject,
@@ -546,11 +569,13 @@ MOFAobject <- prepare_mofa(MOFAobject,
 MOFAobject
 ```
 
-The next step is to train the actual model. To save time, we will load an already precomputed model.
+# Question 2
 
-# Load precomputed model
+**Think about the dimensionality of the data and the chosen number of factors chosen for the model. How many factors do you think we should use? Why?**
 
-From this point on, we will work with a precomputed model that we will load from the web. This model has been trained using the same data set and the same options as the one we just prepared. As a safety measure, we will remove all objects from the current environment before loading the model, as it could cause an error while loading the MOFA object to something already called "MOFAobject". Don't worry, this won't affect the loaded packages.
+## Load precomputed model
+
+From this point on, we will work with a precomputed model. This model was trained by the TA using the same data set and the same options as the one we just prepared. As a safety measure, we will remove all objects from the current environment before loading the model, as it could cause an error while loading the MOFA object to something already called "MOFAobject". Don't worry, this won't affect the loaded packages.
 
 First we save the data to a temporary file, so we can load it later. (**This step is not needed if you already have all files.**)
 
@@ -708,16 +733,8 @@ samples_metadata(MOFAobject.trained) <- covid_metadata |> rename(sample = Record
 
 A good sanity check is to verify that the Factors are largely uncorrelated. In MOFA there are no orthogonality constraints such as in Principal Component Analysis, but if there is a lot of correlation between Factors this suggests a poor model fit. *Reasons?* Perhaps you used too many factors or perhaps the normalisation is not adequate. *Why do we have 10 factors here?*
 
-```{r}
+```{r factor_correlation}
 plot_factor_cor(MOFAobject.trained)
-
-pdf("../plots/pdf/factor_correlation.pdf", width = 8, height = 6)
-plot_factor_cor(MOFAobject.trained)
-dev.off()
-
-png("../plots/png/factor_correlation.png", width = 800, height = 600)
-plot_factor_cor(MOFAobject.trained)
-dev.off()
 ```
 
 ```{r}
@@ -1116,9 +1133,20 @@ head(weights_df, n=10) # Try without head() to see the full data frame
 ###
 ```
 
-# Bonus point:
+# Bonus point
 
 Pick a single latent factor and run the code in this notebook to describe as much information you could get from that factor, i.e., association to outcome, relation to other factors, feature weights, top features, enrichment analysis, etc. Include figures and try to tell a story about what your selected factor could imply. You can think of this bonus point as a brief essay question.
+
+```{r}
+### Your Code Here:
+#
+#
+#
+#
+#
+#
+###
+```
 
 # sessionInfo
 
