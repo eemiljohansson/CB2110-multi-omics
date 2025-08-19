@@ -320,7 +320,7 @@ Let's check the data again. *Are the missing values gone?*
 head(covid_cytokine_data, n = 10)
 ```
 
-```{r}
+```{r missing values cytokine data post filter, fig.width=10, fig.height=6}
 vis_miss(covid_cytokine_data)
 ```
 
@@ -786,6 +786,10 @@ There are a few systematic strategies to characterise the molecular etiology und
 * **Inspection of the feature weights**.
 * **Gene set enrichment analysis on the mRNA weights**.
 
+# Question 4
+
+**By inspecting the association analysis plots below, what can you tell about the factors? Are there any factors that explain certain clinical variables more than others?**
+
 ## Association analysis
 
 Let’s test the association between MOFA Factors and Gender, survival outcome (dead vs alive) and age:
@@ -797,11 +801,11 @@ correlate_factors_with_covariates(MOFAobject.trained,
 )
 ```
 
-# Question 4
+# Question 5
 
 **By inspecting the factor value plots below, what can you tell about the factors? Do you see any patterns? Are there any factors that explain certain clinical variables more than others? What could be the reason for that? You can use other figures in this notebook to support your claim.**
 
-## Factor analysis
+## Factor value
 
 **How do we interpret the factor values?**
 Each factor captures a different source of variability in the data. Mathematically, each Factor is defined by a linear combination of the input features. As the data is centered prior to running MOFA, each Factor ordinates cells along a one-dimensional axis that is centered at zero. Samples with different signs manifest opposite phenotypes along the inferred axis of variation, with higher absolute value indicating a stronger effect. Note that the interpretation of MOFA factors is analogous to the interpretation of the principal components in PCA.
@@ -879,14 +883,14 @@ p$data |>
 
 We can also investigate the factors by how well different factors separates the data compared to other factors.
 
-```{r Factor value all}
+```{r Factor value all, fig.width=10, fig.height=10}
 plot_factors(MOFAobject.trained, 
   factors = 1:10,
   color_by = "COVID_status"
 )
 ```
 
-### Factor weights
+## Factor weights
 
 **How do we interpret the weights?**
 The weights provide a score for each feature on each factor. Features with no association with the corresponding factor are expected to have values close to zero, whereas features with strong association with the factor are expected to have large absolute values. The sign of the weights indicates the direction of the effect: a positive weights indicates that the feature has higher levels in the cells with positive factor values, and vice-versa.
@@ -928,15 +932,19 @@ plot_top_weights(MOFAobject.trained,
 )
 ```
 
-# Question 5
+# Question 6
 
-**Choose another latent factor by changing the argument above for plot_weights() and or plot_top_weights(), `factor = 3`, from 3 to another factor (i.e., 2-10).**
-**Why did you choose that factor? What features can you see?**
-**Select any feature of your own choice, what literature can you find that supports the feature as an important player in COVID-19?**
+**By examplifying with the figures generated in this notebook, try to explain in your own words what the differences between factor value and factor weight are. Provide two examples.**
+
+# Question 7
+**Select two features from SOMAscan and one from cytokine data of your own choice (from factor 3), what literature can you find that supports the feature as an important player in COVID-19?**
+
+# Question 8
+**Choose another latent factor by changing the argument above for `plot_weights()` and or `plot_top_weights()` from 3 to another factor (i.e., 1-15). Why did you choose that factor? What features can you see? Select any feature of your own choice, what literature can you find that supports the feature as an important player in COVID-19?**
 
 Vimentin has a positve weight. This means that samples with positive Factor 1 values have IGHV mutation whereas samples with negative Factor 3 values do not have the IGHV mutation. To confirm this, let’s plot the Factor values and colour the IGHV mutation status.
 
-```{r}
+```{r Factor 3 weight Vimentin}
 plot_factor(MOFAobject.trained,
   factors = 3,
   color_by = "Vimentin",
@@ -947,7 +955,7 @@ plot_factor(MOFAobject.trained,
 
 We can also plot Factor values coloured by other covariates, for example sex, as shown below. *Does it make sense? Have we already learnt this?*
 
-```{r}
+```{r Factor 3 weight Sex}
 plot_factor(MOFAobject.trained,
   factors = 3,
   color_by = "Sex",
@@ -956,12 +964,23 @@ plot_factor(MOFAobject.trained,
 )
 ```
 
+Or age, as shown below.
+
+```{r Factor 3 weight Age}
+plot_factor(MOFAobject.trained,
+  factors = 3,
+  color_by = "Age",
+  dodge = TRUE,
+  add_violin = TRUE
+)
+```
+
 ## Heatmap
 
-Is the expression homogenous across the samples or can you hint about subgroups (hint: FABPA, H2A3, H2B3B)
+Let's visualize the features with the highest absolute value of the weights. Are the value homogenous across the samples or can you hint about subgroups (hint: FABPA, H2A3, H2B3B)
 *Are there any outliers among the samples? Is it more visible from the somalogic data or the cytokine data?*
 
-```{r}
+```{r Heatmap SOMAscan data, fig.width=10, fig.height=6}
 plot_data_heatmap(MOFAobject.trained,
   view = 1,         # view of interest
   factor = 3,             # factor of interest
@@ -971,7 +990,9 @@ plot_data_heatmap(MOFAobject.trained,
   cluster_rows = TRUE, cluster_cols = FALSE,
   show_rownames = TRUE, show_colnames = FALSE
 )
+```
 
+```{r Heatmap Cytokine data, fig.width=10, fig.height=6}
 plot_data_heatmap(MOFAobject.trained,
   view = 2,         # view of interest
   factor = 3,             # factor of interest
@@ -987,14 +1008,14 @@ plot_data_heatmap(MOFAobject.trained,
 
 In this case we have a large amount of genes that have large positive and negative weights. For instance, proteins with large positive values will be more abundant in the samples positive of COVID-19, whereas genes with large negative values will be more expressed in the control samples. Let’s verify this. The function `plot_data_scatter` generates a scatterplot of Factor 3 values (x-axis) versus expression values (y-axis) for the top 4 genes with largest positive weight. 
 
-```{r}
+```{r Correlation scatter SOMAscan and cytokine data, fig.width=10, fig.height=6}
 plot_data_scatter(MOFAobject.trained,
   view = 1,         # view of interest
   factor = 3,             # factor of interest
   features = 6,           # number of features to plot (they are selected by weight)
   add_lm = TRUE,          # add linear regression
   color_by = "COVID_status"
-) +
+) /
   plot_data_scatter(MOFAobject.trained,
   view = 2,         # view of interest
   factor = 3,             # factor of interest
@@ -1006,7 +1027,7 @@ plot_data_scatter(MOFAobject.trained,
 
 We can also combine the two datasets to see if there are correlation in the cytokine data with the somalogic data. This is useful to see if there are any correlations between the two datasets, and if the cytokine data is related to the somalogic data. *Is there literature to support this?*
 
-```{r}
+```{r Correlation scatter Vimentin cytokine positive}
 plot_data_scatter(MOFAobject.trained,
   view = "cytokine",
   factor = 3,
@@ -1018,7 +1039,7 @@ plot_data_scatter(MOFAobject.trained,
 
 This function generates a scatterplot of Factor 1 values (x-axis) versus expression values (y-axis) for the top 4 genes with largest negative weight. *Does this make sense?*
 
-```{r}
+```{r Correlation scatter Vimentin cytokine negative}
 plot_data_scatter(MOFAobject.trained,
   view = "cytokine",
   factor = 3,
@@ -1030,6 +1051,8 @@ plot_data_scatter(MOFAobject.trained,
 
 ## Dimensionality reduction
 
+It is also possible to perform dimensionality reduction on the MOFA object. This is useful to visualize the data in a lower dimensional space, and to see if there are any patterns in the data. We can use UMAP or t-SNE for this purpose. More information about UMAP and t-SNE will be provided in the course **Systems Biology**.
+
 ```{r}
 set.seed(42)
 umap_model <- run_umap(MOFAobject.trained)
@@ -1040,39 +1063,50 @@ tsne_model <- run_tsne(MOFAobject.trained)
 umap_model
 ```
 
+# Question 9
 
-```{r}
+**From inspecting the dimensionality reduction plots below, does UMAP or t-SNE separate the colored groups better than the other, why do you think that is? Change the code to select another feature of your choosing, can any clusters be identified using that feature? Include figure in your answer.**
+
+```{r Dimensionality reduction covid status, fig.width=10, fig.height=6}
 plot_dimred(umap_model,
   method = "UMAP",  # method can be either "TSNE" or "UMAP"
   color_by = "COVID_status"
-)
-
-plot_dimred(umap_model,
-  method = "UMAP",  # method can be either "TSNE" or "UMAP"
-  color_by = "Factor3"
-)
-
-plot_dimred(umap_model,
-  method = "UMAP",  # method can be either "TSNE" or "UMAP"
-  color_by = "Vimentin"
-)
+) +
+  labs(title = "UMAP of MOFA Factors by COVID Status") +
+  
+  plot_dimred(tsne_model,
+  method = "TSNE",  # method can be either "TSNE" or "UMAP"
+  color_by = "COVID_status"
+) +
+  labs(title = "t-SNE of MOFA Factors by COVID Status")
 ```
 
-```{r}
-plot_dimred(tsne_model,
-  method = "TSNE",  # method can be either "TSNE" or "UMAP"
-  color_by = "COVID_status"
-)
-
-plot_dimred(tsne_model,
+```{r Dimensionality reduction factor 3, fig.width=10, fig.height=6}
+plot_dimred(umap_model,
+  method = "UMAP",  # method can be either "TSNE" or "UMAP"
+  color_by = "Factor3"
+) +
+  labs(title = "UMAP of MOFA Factors by Factor 3") +
+  
+  plot_dimred(tsne_model,
   method = "TSNE",  # method can be either "TSNE" or "UMAP"
   color_by = "Factor3"
-)
+) +
+  labs(title = "t-SNE of MOFA Factors by Factor 3")
+```
 
-plot_dimred(tsne_model,
+```{r Dimensionality reduction Vimentin, fig.width=10, fig.height=6}
+plot_dimred(umap_model,
+  method = "UMAP",  # method can be either "TSNE" or "UMAP"
+  color_by = "Vimentin"
+) +
+  labs(title = "UMAP of MOFA Factors by Vimentin") +
+  
+  plot_dimred(tsne_model,
   method = "TSNE",  # method can be either "TSNE" or "UMAP"
   color_by = "Vimentin"
-)
+) +
+  labs(title = "t-SNE of MOFA Factors by Vimentin")
 ```
 
 # Question 10
@@ -1081,7 +1115,9 @@ plot_dimred(tsne_model,
 
 **Make your own plot in any way you see fit, you are allowed to use any generative AI model(s) to help you create your own plot. Then explain in your own words what you wish to tell using your figure.**
 
-**Again**, you have total freedom in creating any sort of plot based on either `factors_df`, `weights_df` or both if you wish to combine them. Tap into your creativity. Then explain what you can tell from this figure. It can be as simple or complex as you like it to be.
+**Again, you have total freedom in creating any sort of plot based on either `factors_df`, `weights_df` or both if you wish to combine them. Tap into your creativity. Then explain what you can tell from this figure. It can be as simple or complex as you like it to be.**
+
+The dataframes can be viewed below. You also have access to `covid_soma_data`, `covid_cytokine_data`, and `covid_metadata`.
 
 ```{r}
 factors <- get_factors(MOFAobject.trained)
@@ -1089,12 +1125,12 @@ factors <- get_factors(MOFAobject.trained)
 # Convert to dataframe
 factors_df <- data.frame(factors)
 
-head(factors_df) # Try without head() to see the full data frame
+head(factors_df, n=10) # Try without head() to see the full data frame
 
 # You also have access to each view's factors
-head(covid_soma_data)
-head(covid_cytokine_data)
-head(covid_metadata)
+head(covid_soma_data, n=10)
+head(covid_cytokine_data, n=10)
+head(covid_metadata, n=10)
 ```
 
 ```{r}
@@ -1129,7 +1165,7 @@ head(weights_df, n=10) # Try without head() to see the full data frame
 
 # Bonus point
 
-Pick a single latent factor and run the code in this notebook to describe as much information you could get from that factor, i.e., association to outcome, relation to other factors, feature weights, top features, enrichment analysis, etc. Include figures and try to tell a story about what your selected factor could imply. You can think of this bonus point as a brief essay question.
+**Pick a single latent factor and run the code in this notebook to describe as much information you could get from that factor, i.e., association to outcome, relation to other factors, feature weights, top features, enrichment analysis, etc. Include figures and try to tell a story about what your selected factor could imply. You can think of this bonus point as a brief essay question.**
 
 ```{r}
 ### Your Code Here:
