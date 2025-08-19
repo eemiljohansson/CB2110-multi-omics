@@ -737,10 +737,14 @@ A good sanity check is to verify that the Factors are largely uncorrelated. In M
 plot_factor_cor(MOFAobject.trained)
 ```
 
+Let's look at the total variance explained for each platform.
+
 ```{r}
 # Total variance explained per view and group
 head(MOFAobject.trained@cache$variance_explained$r2_total[[1]])
 ```
+
+Let's look at the variance explained by each factor and platform. This is a good way to see how much variance each factor explains in each view.
 
 ```{r}
 # Variance explained for every factor in per view and group
@@ -752,34 +756,10 @@ head(MOFAobject.trained@cache$variance_explained$r2_per_factor[[1]], n=10)
 
 ## Variance
 
-```{r}
+**One of the most important insight that MOFA generates is the variance decomposition analysis**. This plot shows the percentage of variance explained by each factor across each data modality (and group, if provided). It summarises the sources of variation from a complex heterogeneous data set in a single figure.
+
+```{r variance explained per view and factor}
 plot_variance_explained(MOFAobject.trained, x="view", y="factor")
-
-pdf("../plots/pdf/variance_explained_per_view.pdf", width = 8, height = 6)
-plot_variance_explained(MOFAobject.trained, x="view", y="factor")
-dev.off()
-
-png("../plots/png/variance_explained_per_view.png", width = 800, height = 600)
-plot_variance_explained(MOFAobject.trained, x="view", y="factor")
-dev.off()
-```
-
-## Plot variance decomposition
-
-### Variance decomposition by Factor
-
-**The most important insight that MOFA generates is the variance decomposition analysis**. This plot shows the percentage of variance explained by each factor across each data modality (and group, if provided). It summarises the sources of variation from a complex heterogeneous data set in a single figure.
-
-```{r}
-plot_variance_explained(MOFAobject.trained, x="group", y="factor", plot_total = TRUE)[[2]]
-
-pdf("../plots/pdf/variance_explained_per_factor.pdf", width = 8, height = 6)
-plot_variance_explained(MOFAobject.trained, x="group", y="factor", plot_total = TRUE)[[2]]
-dev.off()
-
-png("../plots/png/variance_explained_per_factor.png", width = 800, height = 600)
-plot_variance_explained(MOFAobject.trained, x="group", y="factor", plot_total = TRUE)[[2]]
-dev.off()
 ```
 
 ## Total variance explained per view
@@ -791,13 +771,13 @@ A reasonable question is whether the model is providing a good fit to the data. 
 * The higher the number of factors, the higher the total variance explained.
 * MOFA is a linear and sparse model. This is helpful to prevent overfitting, but it will never explain 100% of the variance, even if using a lot of Factors.
 
-In this data set, using only K=15 factors the model explains up to ~54% of the variation in the Drug response and ~42% of the variation in the mRNA data. This is quite remarkable for a linear model.
+In this data set, using only K=10 factors the model explains up to ~51% of the variation in the SOMAscan data and ~43% of the variation in the Cytokine data. This is quite remarkable for a linear model.
 
-```{r}
+```{r total variance explained per view}
 plot_variance_explained(MOFAobject.trained, x = "view", y = "factor", plot_total = TRUE)[[2]]
 ```
 
-# Characterisation of Factors
+## Characterisation of Factors
 
 There are a few systematic strategies to characterise the molecular etiology underlying the MOFA Factors and to relate them to the sample covariates:
 
@@ -810,7 +790,7 @@ There are a few systematic strategies to characterise the molecular etiology und
 
 Let’s test the association between MOFA Factors and Gender, survival outcome (dead vs alive) and age:
 
-```{r}
+```{r Association by factor}
 correlate_factors_with_covariates(MOFAobject.trained,
   covariates = c("Sex","Age","COVID_status"),
   plot="log_pval"
@@ -819,7 +799,7 @@ correlate_factors_with_covariates(MOFAobject.trained,
 
 # Question 4
 
-**By inspecting the factor value plots below, what can you tell about the factors? Do you see any patterns? Are there any factors that explain certain clinical variables more than others? What could be the reason for that?**
+**By inspecting the factor value plots below, what can you tell about the factors? Do you see any patterns? Are there any factors that explain certain clinical variables more than others? What could be the reason for that? You can use other figures in this notebook to support your claim.**
 
 ## Factor analysis
 
@@ -829,25 +809,39 @@ Each factor captures a different source of variability in the data. Mathematical
 * **factors**: character vector with the factor names, or numeric vector with the indices of the factors to use, or "all" to plot all factors.
 * **color_by**: specifies color of sample.
 
-```{r}
+Let's look at the age.
+
+```{r Factor value age}
 plot_factor(MOFAobject.trained, 
   factor = 1:10,
   color_by = "Age",
   shape_by = "COVID_status"
 )
+```
 
+Let's look at the sex.
+
+```{r Factor value sex}
 plot_factor(MOFAobject.trained, 
   factor = 1:10,
   color_by = "Sex",
   shape_by = "COVID_status"
 )
+```
 
+Let's look at the COVID status. *Do we see any patterns? Do the factors separate the samples by COVID status?*
+
+```{r Factor value COVID status}
 plot_factor(MOFAobject.trained, 
   factor = 1:10,
   color_by = "COVID_status",
   shape_by = "COVID_status"
 )
+```
 
+Just another way of visualizing the previous plot.
+
+```{r Factor value COVID status violin}
 p <- plot_factor(MOFAobject.trained, 
   factors = 1:10,
   color_by = "COVID_status",
@@ -868,7 +862,7 @@ print(p)
 
 We can also extract the data from the previous plot to add our own customizations. For instance, we can observer which samples are outliers in the factor space, and we can label them with their sample name. *Do we observe the same sample being outliers/extreme points across all factors or just in some of them? What could be the reason for that?*
 
-```{r}
+```{r Factor value COVID status violin names}
 p$data |>
   ggplot(aes(x = factor, y = value, fill = color_by)) +
   geom_violin(alpha = 0.25) +
@@ -885,7 +879,7 @@ p$data |>
 
 We can also investigate the factors by how well different factors separates the data compared to other factors.
 
-```{r}
+```{r Factor value all}
 plot_factors(MOFAobject.trained, 
   factors = 1:10,
   color_by = "COVID_status"
@@ -899,7 +893,7 @@ The weights provide a score for each feature on each factor. Features with no as
 
 Take factor 3 for instance. *Do the top contributing features make sense? What do they represent? Are they related to COVID-19? Can they be connected to previous downstream analysis?*
 
-```{r}
+```{r Factor weights distribution, fig.width=10, fig.height=6}
 # Plotting somalogic weights
 plot_weights(MOFAobject.trained,
   view = 1,
@@ -921,7 +915,7 @@ plot_weights(MOFAobject.trained,
 
 We can also plot the top features as lollipop plots.
 
-```{r}
+```{r Factor weights top}
 plot_top_weights(MOFAobject.trained,
   view = 1,
   factor = 3,
