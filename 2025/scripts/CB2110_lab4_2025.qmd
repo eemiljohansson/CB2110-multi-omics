@@ -169,7 +169,8 @@ required_packages <- c(
   "patchwork",
   "ggridges",
   "readxl",
-  "naniar"
+  "naniar",
+  "GGally"
 )
 
 # Install any missing packages
@@ -189,7 +190,7 @@ for (pkg in required_packages) {
 Now let's load the packages that we will use for this lab into our environment.
 
 ```{r}
-# I use these versions of the libraries which worked on 2025-07-29.
+# I use these versions of the libraries, which worked on 2025-08-20.
 library(MOFA2) # Version 1.19.0
 library(data.table) # Version 1.17.4
 library(ggplot2) # Version 3.5.2
@@ -204,6 +205,7 @@ library(patchwork) # Version 1.3.0
 library(ggridges) # Version 0.5.6
 library(readxl) # Version 1.4.5
 library(naniar) # Version 1.1.0
+library(GGally) # Version 2.2.1
 ```
 
 ## Specify functions
@@ -280,7 +282,7 @@ covid_soma_data <- covid_soma_data |>
   unnest()
 ```
 
-Let's check the data again
+Let's check the data again.
 
 ```{r}
 head(covid_soma_data, n = 10)
@@ -380,7 +382,9 @@ Let's check the dimensions of the SOMAscan dataset. *What platform was used? Doe
 ```{r}
 covid_soma_data |>
   dim()
+```
 
+```{r}
 # Rank the analytes in terms of their mean intensity values
 covid_soma_data |>
   # Make columns into rows and rows into columns
@@ -399,7 +403,9 @@ covid_soma_data |>
 ```{r}
 covid_cytokine_data |>
   dim()
+```
 
+```{r}
 # Rank the analytes in terms of their mean intensity values
 covid_cytokine_data |>
   # Make columns into rows and rows into columns
@@ -442,15 +448,18 @@ str(COVID_matrices$somalogic)
 Try to break some of the code. *What do MOFA require the input to be in order to create the MOFA object?*.
 
 ```{r}
-# 1. Inspect the two sets of column names
+# Inspect the two sets of column names
 colnames(COVID_matrices$somalogic)
+```
+
+```{r}
 colnames(COVID_matrices$cytokine)
 ```
 
-For simplicity we will only use the samples that are present in both datasets. *What could be the effect of using all samples, even those that don't overlap with data?*
+Notice that some samples don't have both types of data, this is common in multi-omics studies. However, for simplicity we will only use the samples that are present in both datasets. *What could be the effect of using all samples, even those that don't overlap with data?*
 
 ```{r}
-# 2. Find the intersection (samples present in both)
+# Find the intersection (samples present in both)
 common_samples <- intersect(
   colnames(COVID_matrices$somalogic),
   colnames(COVID_matrices$cytokine)
@@ -462,7 +471,7 @@ length(common_samples)  # how many samples survived?
 A MOFA object is created by providing the multi-omics data set. The data set is a list where each element corresponds to a view (e.g., mRNA expression, somatic mutations, drug response). Each view is a data.frame where rows correspond to samples and columns to features.
 
 ```{r}
-# 1. A little helper to replace Greek letters with ASCII names
+# A little helper to replace Greek letters with ASCII names
 clean_feature_names <- function(x) {
   x %>%
     str_replace_all("α", "alpha") %>%
@@ -471,27 +480,27 @@ clean_feature_names <- function(x) {
     str_replace_all("–", "-")      # if you have en-dashes etc.
 }
 
-# 3. Subset & reorder each matrix so they match exactly
+# Subset & reorder each matrix so they match exactly
 COVID_matrices_aligned <- lapply(COVID_matrices, function(mat) {
   mat[, common_samples, drop = FALSE]
 })
 
 
-# 2. Apply it to each view’s rownames
+# Apply it to each view’s rownames
 COVID_matrices_clean <- lapply(COVID_matrices_aligned, function(mat) {
   rn <- rownames(mat)
   rownames(mat) <- clean_feature_names(rn)
   mat
 })
 
-# 3. (Optional) Check that there are no more non-ASCII chars
+# Check that there are no more non-ASCII chars
 bad <- unique(unlist(lapply(COVID_matrices_clean, function(mat) {
   rn <- rownames(mat)
   grep("[^ -~]", rn, value = TRUE)
 })))
 if (length(bad)) stop("Still non-ASCII names: ", paste(bad, collapse = ", "))
 
-# 4. Now rebuild
+# Now rebuild
 MOFAobject <- create_mofa(COVID_matrices_clean)
 MOFAobject
 class(MOFAobject)
@@ -611,11 +620,15 @@ Let's also read in the separate dataframes if you would like to use them in any 
 # Read in the SOMAscan data
 covid_soma_data <- read.csv("../data/covid/covid_soma_data.csv", row.names = 1)
 head(covid_soma_data, n = 10)
+```
 
+```{r}
 # Read in the cytokine data
 covid_cytokine_data <- read.csv("../data/covid/covid_cytokine_data.csv", row.names = 1)
 head(covid_cytokine_data, n = 10)
+```
 
+```{r}
 # Read in the metadata
 covid_metadata <- read.csv("../data/covid/covid_metadata.csv")
 head(covid_metadata, n = 10)
@@ -640,7 +653,7 @@ Train the MOFA model. Remember that in this step the MOFA2 R package connets wit
 ```
 
 ```{r}
-Sys.setenv(HDF5_DIR = system("brew --prefix hdf5", intern = TRUE))
+#Sys.setenv(HDF5_DIR = system("brew --prefix hdf5", intern = TRUE))
 ```
 
 If it doesn't work with use_basilisk = TRUE, try with use_basilisk = FALSE. This will use the conda environment you have set up with reticulate.
@@ -942,7 +955,7 @@ plot_top_weights(MOFAobject.trained,
 # Question 8
 **Choose another latent factor by changing the argument above for `plot_weights()` and or `plot_top_weights()` from 3 to another factor (i.e., 1-15). Why did you choose that factor? What features can you see? Select any feature of your own choice, what literature can you find that supports the feature as an important player in COVID-19?**
 
-Vimentin has a positve weight. This means that samples with positive Factor 1 values have IGHV mutation whereas samples with negative Factor 3 values do not have the IGHV mutation. To confirm this, let’s plot the Factor values and colour the IGHV mutation status.
+Vimentin has a positive weight. This means that samples with positive Factor 3 values have more abundance of Vimentin, whereas samples with negative Factor 3 values have less abundance of Vimentin. To confirm this, let’s plot the Factor values and colour the Vimentin abundance level.
 
 ```{r Factor 3 weight Vimentin}
 plot_factor(MOFAobject.trained,
@@ -1113,7 +1126,7 @@ plot_dimred(umap_model,
 
 **Working with latent factors and weights can be daunting as they can seem ambigious. To perhaps make more sense of the meaning of latent factor and weights, this data have been extracted into dataframes from the trained MOFA object as `factors_df` and `weights_df`. You can `view()` these dataframes below.**
 
-**Make your own plot in any way you see fit, you are allowed to use any generative AI model(s) to help you create your own plot. Then explain in your own words what you wish to tell using your figure.**
+**Make your own plot in any way you see fit. Then explain in your own words what you wish to tell using your figure.**
 
 **Again, you have total freedom in creating any sort of plot based on either `factors_df`, `weights_df` or both if you wish to combine them. Tap into your creativity. Then explain what you can tell from this figure. It can be as simple or complex as you like it to be.**
 
@@ -1126,10 +1139,19 @@ factors <- get_factors(MOFAobject.trained)
 factors_df <- data.frame(factors)
 
 head(factors_df, n=10) # Try without head() to see the full data frame
+```
 
+```{r}
 # You also have access to each view's factors
 head(covid_soma_data, n=10)
+```
+
+```{r}
 head(covid_cytokine_data, n=10)
+```
+
+
+```{r}
 head(covid_metadata, n=10)
 ```
 
